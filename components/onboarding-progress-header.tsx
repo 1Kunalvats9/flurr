@@ -2,7 +2,12 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
 
-export default function OnboardingProgressHeader({ stepLabel, progress }) {
+type OnboardingProgressHeaderProps = {
+  stepLabel: string;
+  progress: number;
+};
+
+export default function OnboardingProgressHeader({ stepLabel, progress }: OnboardingProgressHeaderProps) {
   const [fontsLoaded] = useFonts({
     DM_Sans_400Regular: DMSans_400Regular,
     DM_Sans_500Medium: DMSans_500Medium,
@@ -12,6 +17,8 @@ export default function OnboardingProgressHeader({ stepLabel, progress }) {
     return null;
   }
 
+  const boundedProgress = Math.max(0, Math.min(progress, 1));
+
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
@@ -19,7 +26,7 @@ export default function OnboardingProgressHeader({ stepLabel, progress }) {
         <Text style={styles.step}>{stepLabel}</Text>
       </View>
       <View style={styles.track}>
-        <View style={[styles.fill, { width: `${Math.max(0, Math.min(progress, 1)) * 100}%` }]} />
+        <View style={[styles.fill, { width: `${boundedProgress * 100}%` }]} />
       </View>
     </View>
   );
@@ -38,12 +45,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'DM_Sans_500Medium',
-    fontSize: 18 / 2,
+    fontSize: 9,
     color: '#1C1612',
   },
   step: {
     fontFamily: 'DM_Sans_500Medium',
-    fontSize: 30 / 2,
+    fontSize: 15,
     color: '#1C1612',
   },
   track: {

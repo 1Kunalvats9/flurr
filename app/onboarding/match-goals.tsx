@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { type ReactElement, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,8 +8,20 @@ import { useFonts } from 'expo-font';
 import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
 import OnboardingProgressHeader from '@/components/onboarding-progress-header';
+import TactilePressable from '@/components/tactile-pressable';
 
-const GOAL_OPTIONS = [
+type IoniconName = keyof typeof Ionicons.glyphMap;
+type MaterialIconName = keyof typeof MaterialCommunityIcons.glyphMap;
+type IconLib = 'Ionicons' | 'MaterialCommunityIcons';
+
+type GoalOption = {
+  key: string;
+  label: string;
+  iconLib: IconLib;
+  icon: IoniconName | MaterialIconName;
+};
+
+const GOAL_OPTIONS: GoalOption[] = [
   {
     key: 'romantic_partner',
     label: 'Romantic\npartner',
@@ -48,26 +60,25 @@ const GOAL_OPTIONS = [
   },
 ];
 
-function OptionIcon({ iconLib, icon }) {
+function OptionIcon({ iconLib, icon }: { iconLib: IconLib; icon: IoniconName | MaterialIconName }) {
   if (iconLib === 'MaterialCommunityIcons') {
-    return <MaterialCommunityIcons name={icon} size={22} color="#1C1612" />;
+    return <MaterialCommunityIcons name={icon as MaterialIconName} size={22} color="#1C1612" />;
   }
-  return <Ionicons name={icon} size={22} color="#1C1612" />;
+
+  return <Ionicons name={icon as IoniconName} size={22} color="#1C1612" />;
 }
 
 export default function MatchGoalsScreen() {
   const router = useRouter();
-  const [selected, setSelected] = useState([]);
+  const [selected, setSelected] = useState<string[]>([]);
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
     DM_Sans_400Regular: DMSans_400Regular,
     DM_Sans_500Medium: DMSans_500Medium,
   });
 
-  const toggleSelection = (key) => {
-    setSelected((prev) =>
-      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
-    );
+  const toggleSelection = (key: string) => {
+    setSelected((prev) => (prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]));
   };
 
   const canContinue = selected.length > 0;
@@ -94,33 +105,34 @@ export default function MatchGoalsScreen() {
             <Text style={styles.heading}>what&apos;s missing rn that ur hoping to get from a match?</Text>
 
             <View style={styles.grid}>
-              {GOAL_OPTIONS.map((item) => {
+              {GOAL_OPTIONS.map((item): ReactElement => {
                 const isSelected = selected.includes(item.key);
                 return (
-                  <Pressable
+                  <TactilePressable
                     key={item.key}
                     onPress={() => toggleSelection(item.key)}
-                    style={[styles.optionCard, isSelected && styles.optionCardSelected]}>
+                    style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+                    pressScale={0.985}>
                     <View style={styles.optionIcon}>
                       <OptionIcon iconLib={item.iconLib} icon={item.icon} />
                     </View>
                     <Text style={styles.optionText}>{item.label}</Text>
-                  </Pressable>
+                  </TactilePressable>
                 );
               })}
             </View>
           </View>
 
           <View style={styles.footer}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
               <Ionicons name="arrow-back" size={22} color="#1C1612" />
-            </Pressable>
+            </TactilePressable>
 
-            <Pressable
+            <TactilePressable
               onPress={handleContinue}
               style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}>
               <Text style={styles.continueLabel}>continue</Text>
-            </Pressable>
+            </TactilePressable>
           </View>
         </View>
       </SafeAreaView>
@@ -139,17 +151,17 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingTop: 48,
     paddingBottom: 24,
   },
   heading: {
     color: '#1C1612',
     fontFamily: 'Playfair_Display_Italic',
-    fontSize: 66 / 2,
+    fontSize: 33,
     lineHeight: 44,
     letterSpacing: -0.15,
-    maxWidth: 328,
+    maxWidth: 340,
   },
   grid: {
     marginTop: 24,

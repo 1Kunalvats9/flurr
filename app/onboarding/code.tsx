@@ -7,6 +7,8 @@ import {
   Text,
   TextInput,
   View,
+  type NativeSyntheticEvent,
+  type TextInputKeyPressEventData,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
@@ -15,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
+import TactilePressable from '@/components/tactile-pressable';
 
 const OTP_LENGTH = 4;
 
@@ -25,9 +28,10 @@ export default function CodeScreen() {
     DM_Sans_400Regular: DMSans_400Regular,
     DM_Sans_500Medium: DMSans_500Medium,
   });
-  const [digits, setDigits] = useState(Array.from({ length: OTP_LENGTH }, () => ''));
+
+  const [digits, setDigits] = useState<string[]>(Array.from({ length: OTP_LENGTH }, () => ''));
   const [activeIndex, setActiveIndex] = useState(0);
-  const inputRefs = useRef([]);
+  const inputRefs = useRef<(TextInput | null)[]>([]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -37,11 +41,11 @@ export default function CodeScreen() {
     return () => clearTimeout(timer);
   }, []);
 
-  const updateDigits = (nextDigits) => {
+  const updateDigits = (nextDigits: string[]) => {
     setDigits(nextDigits);
   };
 
-  const handleChangeText = (index, rawValue) => {
+  const handleChangeText = (index: number, rawValue: string) => {
     const value = rawValue.replace(/\D/g, '');
     const nextDigits = [...digits];
 
@@ -73,8 +77,8 @@ export default function CodeScreen() {
     }
   };
 
-  const handleKeyPress = (index, key) => {
-    if (key !== 'Backspace') {
+  const handleKeyPress = (index: number, event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+    if (event.nativeEvent.key !== 'Backspace') {
       return;
     }
 
@@ -133,11 +137,10 @@ export default function CodeScreen() {
                         }}
                         value={digit}
                         onChangeText={(text) => handleChangeText(index, text)}
-                        onKeyPress={({ nativeEvent }) => handleKeyPress(index, nativeEvent.key)}
+                        onKeyPress={(event) => handleKeyPress(index, event)}
                         onFocus={() => setActiveIndex(index)}
                         keyboardType={Platform.select({ ios: 'number-pad', android: 'numeric' })}
                         maxLength={OTP_LENGTH}
-                        returnKeyType="done"
                         selectionColor="#FF335F"
                         placeholder="1"
                         placeholderTextColor="#99958F"
@@ -151,19 +154,22 @@ export default function CodeScreen() {
                 })}
               </View>
 
-              <Pressable onPress={() => inputRefs.current[0]?.focus()} style={styles.resendWrap}>
+              <TactilePressable
+                onPress={() => inputRefs.current[0]?.focus()}
+                style={styles.resendWrap}
+                pressScale={0.98}>
                 <Text style={styles.resendText}>Resend code</Text>
-              </Pressable>
+              </TactilePressable>
             </View>
 
             <View style={styles.footer}>
-              <Pressable onPress={() => router.back()} style={styles.backButton}>
+              <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
                 <Ionicons name="arrow-back" size={22} color="#1C1612" />
-              </Pressable>
+              </TactilePressable>
 
-              <Pressable onPress={handleVerify} style={styles.verifyButton}>
+              <TactilePressable onPress={handleVerify} style={styles.verifyButton}>
                 <Text style={styles.verifyLabel}>Verify code</Text>
-              </Pressable>
+              </TactilePressable>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -202,16 +208,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#1C1612',
     fontFamily: 'DM_Sans_400Regular',
-    fontSize: 32 / 2,
+    fontSize: 16,
   },
   codeRow: {
     flexDirection: 'row',
     gap: 12,
   },
   codeBox: {
-    width: 96 / 1.25,
-    height: 90 / 1.25,
-    borderRadius: 22 / 1.25,
+    width: 77,
+    height: 72,
+    borderRadius: 18,
     backgroundColor: '#EFEFEF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -226,7 +232,7 @@ const styles = StyleSheet.create({
     height: '100%',
     color: '#1C1612',
     fontFamily: 'DM_Sans_500Medium',
-    fontSize: 34 / 2,
+    fontSize: 17,
   },
   resendWrap: {
     marginTop: 30,
@@ -235,7 +241,7 @@ const styles = StyleSheet.create({
   resendText: {
     color: '#FF2B56',
     fontFamily: 'DM_Sans_500Medium',
-    fontSize: 34 / 2,
+    fontSize: 17,
   },
   footer: {
     width: '100%',

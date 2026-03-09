@@ -1,18 +1,19 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
-import {
-  PlayfairDisplay_400Regular_Italic,
-} from '@expo-google-fonts/playfair-display';
+import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
+import TactilePressable from '@/components/tactile-pressable';
+
+type IntentType = 'matchmaking' | 'organizer';
 
 export default function IntentionsScreen() {
   const router = useRouter();
-  const [intent, setIntent] = useState('matchmaking');
+  const [intent, setIntent] = useState<IntentType>('matchmaking');
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
     DM_Sans_400Regular: DMSans_400Regular,
@@ -33,9 +34,9 @@ export default function IntentionsScreen() {
             <Text style={styles.heading}>what are your intentions?</Text>
 
             <View style={styles.optionRow}>
-              <Pressable
+              <TactilePressable
                 onPress={() => setIntent('matchmaking')}
-                style={styles.optionButton}>
+                style={[styles.optionButton, intent === 'matchmaking' && styles.optionButtonSelected]}>
                 <Text
                   style={[
                     styles.optionLabel,
@@ -43,11 +44,11 @@ export default function IntentionsScreen() {
                   ]}>
                   Matchmaking
                 </Text>
-              </Pressable>
+              </TactilePressable>
 
-              <Pressable
+              <TactilePressable
                 onPress={() => setIntent('organizer')}
-                style={styles.optionButton}>
+                style={[styles.optionButton, intent === 'organizer' && styles.optionButtonSelected]}>
                 <Text
                   style={[
                     styles.optionLabel,
@@ -55,16 +56,16 @@ export default function IntentionsScreen() {
                   ]}>
                   I am an organizer
                 </Text>
-              </Pressable>
+              </TactilePressable>
             </View>
           </View>
 
           <View style={styles.footer}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
               <Ionicons name="arrow-back" size={22} color="#1C1612" />
-            </Pressable>
+            </TactilePressable>
 
-            <Pressable
+            <TactilePressable
               onPress={() =>
                 router.push({
                   pathname: '/onboarding/email',
@@ -73,7 +74,7 @@ export default function IntentionsScreen() {
               }
               style={styles.continueButton}>
               <Text style={styles.continueLabel}>continue</Text>
-            </Pressable>
+            </TactilePressable>
           </View>
         </View>
       </SafeAreaView>
@@ -99,8 +100,8 @@ const styles = StyleSheet.create({
   heading: {
     color: '#1C1612',
     fontFamily: 'Playfair_Display_Italic',
-    fontSize: 29,
-    lineHeight: 40,
+    fontSize: 44,
+    lineHeight: 56,
     letterSpacing: -0.1,
   },
   optionRow: {
@@ -110,12 +111,15 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     flex: 1,
-    height: 76,
+    minHeight: 76,
     borderRadius: 22,
     backgroundColor: '#EDEAE4',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 14,
+  },
+  optionButtonSelected: {
+    backgroundColor: '#E8E3D8',
   },
   optionLabel: {
     fontFamily: 'DM_Sans_500Medium',

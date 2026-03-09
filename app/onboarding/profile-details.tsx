@@ -16,13 +16,14 @@ import { useFonts } from 'expo-font';
 import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
 import OnboardingProgressHeader from '@/components/onboarding-progress-header';
+import TactilePressable from '@/components/tactile-pressable';
 
-const PRONOUN_POOL = ['they', 'them', 'she/her', 'he/him', 'any'];
+const PRONOUN_POOL = ['they', 'them', 'she/her', 'he/him', 'any'] as const;
 
 export default function ProfileDetailsScreen() {
   const router = useRouter();
   const [firstName, setFirstName] = useState('June');
-  const [pronouns, setPronouns] = useState(['them', 'they']);
+  const [pronouns, setPronouns] = useState<string[]>(['them', 'they']);
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
     DM_Sans_400Regular: DMSans_400Regular,
@@ -30,10 +31,7 @@ export default function ProfileDetailsScreen() {
   });
 
   const canContinue = firstName.trim().length > 0 && pronouns.length > 0;
-  const nextPronoun = useMemo(
-    () => PRONOUN_POOL.find((item) => !pronouns.includes(item)),
-    [pronouns]
-  );
+  const nextPronoun = useMemo(() => PRONOUN_POOL.find((item) => !pronouns.includes(item)), [pronouns]);
 
   const addPronoun = () => {
     if (!nextPronoun) {
@@ -42,7 +40,7 @@ export default function ProfileDetailsScreen() {
     setPronouns((prev) => [...prev, nextPronoun]);
   };
 
-  const removePronoun = (target) => {
+  const removePronoun = (target: string) => {
     setPronouns((prev) => prev.filter((item) => item !== target));
   };
 
@@ -96,26 +94,27 @@ export default function ProfileDetailsScreen() {
                     </View>
                   ))}
 
-                  <Pressable
+                  <TactilePressable
                     onPress={addPronoun}
                     style={[styles.tagAdd, !nextPronoun && styles.tagAddDisabled]}
-                    disabled={!nextPronoun}>
+                    disabled={!nextPronoun}
+                    pressScale={0.98}>
                     <Text style={styles.tagAddText}>+ add</Text>
-                  </Pressable>
+                  </TactilePressable>
                 </View>
               </View>
             </View>
 
             <View style={styles.footer}>
-              <Pressable onPress={() => router.back()} style={styles.backButton}>
+              <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
                 <Ionicons name="arrow-back" size={22} color="#1C1612" />
-              </Pressable>
+              </TactilePressable>
 
-              <Pressable
+              <TactilePressable
                 onPress={handleContinue}
                 style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}>
                 <Text style={styles.continueLabel}>continue</Text>
-              </Pressable>
+              </TactilePressable>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -145,7 +144,7 @@ const styles = StyleSheet.create({
   heading: {
     color: '#1C1612',
     fontFamily: 'Playfair_Display_Italic',
-    fontSize: 66 / 2,
+    fontSize: 33,
     lineHeight: 44,
     letterSpacing: -0.1,
   },
@@ -174,7 +173,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     color: '#1C1612',
     fontFamily: 'DM_Sans_400Regular',
-    fontSize: 24 / 2,
+    fontSize: 12,
   },
   tagsRow: {
     flexDirection: 'row',

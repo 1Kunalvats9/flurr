@@ -129,7 +129,7 @@ export default function SplashScreen() {
     buttonsY,
   ]);
 
-  const pressIn = (scaleValue, toValue) => {
+  const pressIn = (scaleValue: Animated.Value, toValue: number) => {
     Animated.spring(scaleValue, {
       toValue,
       speed: 32,
@@ -138,7 +138,7 @@ export default function SplashScreen() {
     }).start();
   };
 
-  const pressOut = (scaleValue) => {
+  const pressOut = (scaleValue: Animated.Value) => {
     Animated.spring(scaleValue, {
       toValue: 1,
       speed: 20,

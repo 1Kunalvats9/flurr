@@ -6,6 +6,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type GestureResponderEvent,
+  type PanResponderGestureState,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
@@ -15,8 +17,14 @@ import { useFonts } from 'expo-font';
 import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
 import OnboardingProgressHeader from '@/components/onboarding-progress-header';
+import TactilePressable from '@/components/tactile-pressable';
 
-const ERA_OPTIONS = [
+type EraOption = {
+  key: string;
+  label: string;
+};
+
+const ERA_OPTIONS: EraOption[] = [
   { key: 'gen_z', label: '2010s+ (gen z)' },
   { key: 'zillenial', label: 'on the cusp (zillenial)' },
   { key: 'millennial', label: '30+ (solid millenial,\naka late 90s)' },
@@ -24,7 +32,7 @@ const ERA_OPTIONS = [
 
 const THUMB_WIDTH = 38;
 
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
@@ -44,7 +52,7 @@ export default function EraScreen() {
   const maxThumbX = Math.max(0, trackWidth - THUMB_WIDTH);
 
   const positionForIndex = useCallback(
-    (index) => {
+    (index: number) => {
       if (ERA_OPTIONS.length <= 1 || maxThumbX === 0) {
         return 0;
       }
@@ -62,6 +70,15 @@ export default function EraScreen() {
     }).start();
   }, [eraIndex, positionForIndex, thumbX]);
 
+  const settleToNearest = useCallback(
+    (releasedX: number) => {
+      const ratio = maxThumbX === 0 ? 0 : releasedX / maxThumbX;
+      const nextIndex = Math.round(ratio * (ERA_OPTIONS.length - 1));
+      setEraIndex(nextIndex);
+    },
+    [maxThumbX]
+  );
+
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -70,35 +87,29 @@ export default function EraScreen() {
         onPanResponderGrant: () => {
           dragStart.current = positionForIndex(eraIndex);
         },
-        onPanResponderMove: (_, gesture) => {
+        onPanResponderMove: (_: GestureResponderEvent, gesture: PanResponderGestureState) => {
           const nextX = clamp(dragStart.current + gesture.dx, 0, maxThumbX);
           thumbX.setValue(nextX);
         },
-        onPanResponderRelease: (_, gesture) => {
+        onPanResponderRelease: (_: GestureResponderEvent, gesture: PanResponderGestureState) => {
           const releasedX = clamp(dragStart.current + gesture.dx, 0, maxThumbX);
-          const ratio = maxThumbX === 0 ? 0 : releasedX / maxThumbX;
-          const nextIndex = Math.round(ratio * (ERA_OPTIONS.length - 1));
-          setEraIndex(nextIndex);
+          settleToNearest(releasedX);
         },
-        onPanResponderTerminate: (_, gesture) => {
+        onPanResponderTerminate: (_: GestureResponderEvent, gesture: PanResponderGestureState) => {
           const releasedX = clamp(dragStart.current + gesture.dx, 0, maxThumbX);
-          const ratio = maxThumbX === 0 ? 0 : releasedX / maxThumbX;
-          const nextIndex = Math.round(ratio * (ERA_OPTIONS.length - 1));
-          setEraIndex(nextIndex);
+          settleToNearest(releasedX);
         },
       }),
-    [eraIndex, maxThumbX, positionForIndex, thumbX]
+    [eraIndex, maxThumbX, positionForIndex, settleToNearest, thumbX]
   );
 
-  const handleTrackPress = (locationX) => {
+  const handleTrackPress = (locationX: number) => {
     if (ERA_OPTIONS.length <= 1) {
       setEraIndex(0);
       return;
     }
     const nextX = clamp(locationX - THUMB_WIDTH / 2, 0, maxThumbX);
-    const ratio = maxThumbX === 0 ? 0 : nextX / maxThumbX;
-    const nextIndex = Math.round(ratio * (ERA_OPTIONS.length - 1));
-    setEraIndex(nextIndex);
+    settleToNearest(nextX);
   };
 
   if (!fontsLoaded) {
@@ -140,10 +151,7 @@ export default function EraScreen() {
 
             <View style={styles.labelRow}>
               {ERA_OPTIONS.map((option, index) => (
-                <Pressable
-                  key={option.key}
-                  onPress={() => setEraIndex(index)}
-                  style={styles.labelBlock}>
+                <Pressable key={option.key} onPress={() => setEraIndex(index)} style={styles.labelBlock}>
                   <Text style={styles.labelText}>{option.label}</Text>
                 </Pressable>
               ))}
@@ -151,13 +159,13 @@ export default function EraScreen() {
           </View>
 
           <View style={styles.footer}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
               <Ionicons name="arrow-back" size={22} color="#1C1612" />
-            </Pressable>
+            </TactilePressable>
 
-            <Pressable onPress={() => router.push('/home')} style={styles.continueButton}>
+            <TactilePressable onPress={() => router.push('/home')} style={styles.continueButton}>
               <Text style={styles.continueLabel}>continue</Text>
-            </Pressable>
+            </TactilePressable>
           </View>
         </View>
       </SafeAreaView>
@@ -176,14 +184,14 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingTop: 56,
     paddingBottom: 24,
   },
   heading: {
     color: '#1C1612',
     fontFamily: 'Playfair_Display_Italic',
-    fontSize: 66 / 2,
+    fontSize: 33,
     lineHeight: 44,
     letterSpacing: -0.15,
   },
@@ -219,7 +227,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 6,
+    gap: 8,
   },
   labelBlock: {
     flex: 1,
@@ -227,7 +235,7 @@ const styles = StyleSheet.create({
   labelText: {
     color: '#1C1612',
     fontFamily: 'DM_Sans_400Regular',
-    fontSize: 21 / 2,
+    fontSize: 10.5,
     lineHeight: 15,
   },
   footer: {

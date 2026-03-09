@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -15,10 +14,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
+import TactilePressable from '@/components/tactile-pressable';
+
+type EmailParams = {
+  intent?: string | string[];
+};
 
 export default function EmailScreen() {
   const router = useRouter();
-  const { intent } = useLocalSearchParams();
+  const { intent } = useLocalSearchParams<EmailParams>();
   const [email, setEmail] = useState('');
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
@@ -73,15 +77,15 @@ export default function EmailScreen() {
             </View>
 
             <View style={styles.footer}>
-              <Pressable onPress={() => router.back()} style={styles.backButton}>
+              <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
                 <Ionicons name="arrow-back" size={22} color="#1C1612" />
-              </Pressable>
+              </TactilePressable>
 
-              <Pressable
+              <TactilePressable
                 onPress={handleContinue}
                 style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}>
                 <Text style={styles.continueLabel}>continue</Text>
-              </Pressable>
+              </TactilePressable>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -120,7 +124,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: '#1C1612',
     fontFamily: 'DM_Sans_400Regular',
-    fontSize: 32 / 2,
+    fontSize: 16,
   },
   input: {
     height: 68,
