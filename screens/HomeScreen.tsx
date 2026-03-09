@@ -57,7 +57,7 @@ const USERS: UserProfile[] = [
     tags: ['deep convos pls', 'calling > texting', 'beach life', 'loves to host'],
     about: 'wants tenderness, banter, and someone emotionally present.',
     image:
-      'https://images.unsplash.com/photo-1542838686-ff3081880ef3?auto=format&fit=crop&w=900&q=80',
+      'https://images.unsplash.com/photo-1542206395-9feb3edaa68d?auto=format&fit=crop&w=900&q=80',
   },
   {
     id: 'dani',
