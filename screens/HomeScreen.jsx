@@ -84,6 +84,21 @@ const TABS = [
   { key: 'events', label: 'events', icon: null },
 ];
 
+const SMOOTH_EXPAND_ANIMATION = {
+  duration: 280,
+  create: {
+    type: LayoutAnimation.Types.easeInEaseOut,
+    property: LayoutAnimation.Properties.opacity,
+  },
+  update: {
+    type: LayoutAnimation.Types.easeInEaseOut,
+  },
+  delete: {
+    type: LayoutAnimation.Types.easeInEaseOut,
+    property: LayoutAnimation.Properties.opacity,
+  },
+};
+
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState('home');
@@ -112,7 +127,7 @@ export default function HomeScreen() {
   }, [activeIndex, indicatorX, singleTabWidth]);
 
   const toggleCard = (id) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    LayoutAnimation.configureNext(SMOOTH_EXPAND_ANIMATION);
     setExpandedCardId((prev) => (prev === id ? null : id));
   };
 
@@ -141,12 +156,12 @@ export default function HomeScreen() {
             <View style={styles.cardStack}>
               {USERS.map((user) => {
                 const expanded = expandedCardId === user.id;
-                const visibleTags = expanded ? user.tags : user.tags.slice(0, 4);
+                const visibleTags = expanded ? user.tags : user.tags.slice(0, 3);
                 const hiddenCount = user.tags.length - visibleTags.length;
 
                 return (
                   <Pressable key={user.id} onPress={() => toggleCard(user.id)} style={styles.card}>
-                    <View style={styles.cardTop}>
+                    <View style={[styles.cardTop, { minHeight: cardImageHeight }]}>
                       <View style={styles.cardLeft}>
                         <Text style={styles.cardName}>{user.name}</Text>
                         <Text style={styles.cardPronouns}>{user.pronouns}</Text>
@@ -165,13 +180,10 @@ export default function HomeScreen() {
                         </View>
                       </View>
 
-                      <Image
-                        source={{ uri: user.image }}
-                        style={[styles.cardImage, { width: cardImageWidth, height: cardImageHeight }]}
-                      />
+                      <View style={[styles.cardImageWrap, { width: cardImageWidth }]}>
+                        <Image source={{ uri: user.image }} style={styles.cardImage} />
+                      </View>
                     </View>
-
-                    {expanded ? <Text style={styles.cardAbout}>{user.about}</Text> : null}
                   </Pressable>
                 );
               })}
@@ -288,6 +300,7 @@ const styles = StyleSheet.create({
   cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'stretch',
   },
   cardLeft: {
     flex: 1,
@@ -310,28 +323,27 @@ const styles = StyleSheet.create({
   tagsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   tag: {
-    borderRadius: 12,
+    borderRadius: 10,
     backgroundColor: '#F4F3EF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
   },
   tagText: {
     color: '#1C1612',
     fontFamily: 'DM_Sans_400Regular',
-    fontSize: 14,
+    fontSize: 11.5,
+  },
+  cardImageWrap: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    alignSelf: 'stretch',
   },
   cardImage: {
-    borderRadius: 18,
-  },
-  cardAbout: {
-    marginTop: 11,
-    color: '#47423A',
-    fontFamily: 'DM_Sans_400Regular',
-    fontSize: 14,
-    lineHeight: 20,
+    width: '100%',
+    height: '100%',
   },
   placeholderWrap: {
     flex: 1,
