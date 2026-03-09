@@ -3,12 +3,10 @@ import {
   Animated,
   Image,
   LayoutAnimation,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  UIManager,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -105,12 +103,6 @@ export default function HomeScreen() {
   const cardImageHeight = Math.round(cardImageWidth * 1.36);
 
   useEffect(() => {
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
-  }, []);
-
-  useEffect(() => {
     Animated.spring(indicatorX, {
       toValue: activeIndex * singleTabWidth,
       speed: 20,
@@ -199,7 +191,12 @@ export default function HomeScreen() {
               const nextWidth = event.nativeEvent.layout.width;
               setBarWidth(nextWidth);
             }}>
-            <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
+            <BlurView
+              intensity={50}
+              tint="light"
+              style={StyleSheet.absoluteFill}
+              experimentalBlurMethod="dimezisBlurView"
+            />
             <View style={styles.tabOverlay} />
 
             <Animated.View
