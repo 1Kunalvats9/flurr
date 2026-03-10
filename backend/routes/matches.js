@@ -20,6 +20,20 @@ function getStringArray(value) {
   return value.filter((item) => typeof item === 'string').map((item) => item.trim()).filter(Boolean);
 }
 
+function resolveEraGroup(era) {
+  const numericEra = Number(era);
+
+  if (numericEra <= 37) {
+    return 'gen_z';
+  }
+
+  if (numericEra <= 62) {
+    return 'zillenial';
+  }
+
+  return 'millennial';
+}
+
 matchesRouter.get('/', async (req, res) => {
   const { data: currentProfile, error: currentProfileError } = await supabaseAdmin
     .from('profiles')
@@ -50,6 +64,7 @@ matchesRouter.get('/', async (req, res) => {
     match_types: getStringArray(currentPreferences.match_types),
     era: Number(currentProfile.era) || 50,
   };
+  const currentUserEraGroup = resolveEraGroup(currentUser.era);
 
   const { data: candidates, error: candidatesError } = await supabaseAdmin
     .from('profiles')
@@ -85,12 +100,18 @@ matchesRouter.get('/', async (req, res) => {
         match_types: getStringArray(candidatePreferences?.match_types),
         era: Number(candidate.era) || 50,
       };
+      const candidateEraGroup = resolveEraGroup(normalizedCandidate.era);
 
       const intentionOverlap = currentUser.intentions.filter((i) => normalizedCandidate.intentions.includes(i)).length;
       const matchTypeOverlap = currentUser.match_types.filter((m) => normalizedCandidate.match_types.includes(m)).length;
 
       // Keep feed focused on actual preference matches.
       if (intentionOverlap === 0 && matchTypeOverlap === 0) {
+        return null;
+      }
+
+      // Keep matches within the same age/era group.
+      if (candidateEraGroup !== currentUserEraGroup) {
         return null;
       }
 

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
-import { getSessionToken, setSessionToken } from '@/utils/auth-token';
+import { getSessionToken, loadSessionToken, setSessionToken } from '@/utils/auth-token';
 import { useApi } from '@/utils/api';
 
 type ProfileState = {
@@ -29,10 +29,13 @@ export type MatchRecord = {
 type ActionResult = {
   ok: boolean;
   error?: string;
+  redirectTo?: 'signup' | 'login';
+  onboardingComplete?: boolean;
 };
 
 type UserContextValue = {
   sessionToken: string | null;
+  isAuthReady: boolean;
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   authError: string | null;
@@ -104,9 +107,19 @@ function getErrorMessage(error: unknown, fallback = 'Something went wrong. Pleas
   return fallback;
 }
 
+type MeResponse = {
+  exists: boolean;
+  profile?: Partial<ProfileState>;
+  preferences?: {
+    intentions?: string[];
+    match_types?: string[];
+  } | null;
+};
+
 export function UserProvider({ children }: { children: ReactNode }) {
   const api = useApi();
   const [sessionTokenState, setSessionTokenState] = useState<string | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileState>(DEFAULT_PROFILE);
@@ -124,6 +137,34 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setSessionToken(token);
   }, []);
 
+  const applyHydratedUser = useCallback((data: MeResponse) => {
+    if (!(data?.exists && data.profile)) {
+      return false;
+    }
+
+    const hydratedProfile = data.profile;
+
+    setProfile((prev) => ({
+      ...prev,
+      name: (hydratedProfile.name || prev.name) as string,
+      pronouns: (hydratedProfile.pronouns || prev.pronouns) as string,
+      email: (hydratedProfile.email || prev.email) as string,
+      avatar_url:
+        typeof hydratedProfile.avatar_url === 'string' || hydratedProfile.avatar_url === null
+          ? hydratedProfile.avatar_url
+          : prev.avatar_url,
+      era: Number(hydratedProfile.era ?? prev.era),
+      onboarding_complete: Boolean(hydratedProfile.onboarding_complete),
+    }));
+
+    if (data.preferences) {
+      setIntentions(normalizeStringArray(data.preferences.intentions));
+      setMatchTypes(normalizeStringArray(data.preferences.match_types));
+    }
+
+    return Boolean(hydratedProfile.onboarding_complete);
+  }, []);
+
   const hydrateUser = useCallback(async () => {
     if (!getSessionToken()) {
       setIsHydratingUser(false);
@@ -133,40 +174,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setIsHydratingUser(true);
 
     try {
-      const { data } = await api.get<{
-        exists: boolean;
-        profile?: Partial<ProfileState>;
-        preferences?: {
-          intentions?: string[];
-          match_types?: string[];
-        } | null;
-      }>('/api/users/me');
-
-      if (data?.exists && data.profile) {
-        const hydratedProfile = data.profile;
-
-        setProfile((prev) => ({
-          ...prev,
-          name: (hydratedProfile.name || prev.name) as string,
-          pronouns: (hydratedProfile.pronouns || prev.pronouns) as string,
-          email: (hydratedProfile.email || prev.email) as string,
-          avatar_url:
-            typeof hydratedProfile.avatar_url === 'string' || hydratedProfile.avatar_url === null
-              ? hydratedProfile.avatar_url
-              : prev.avatar_url,
-          era: Number(hydratedProfile.era ?? prev.era),
-          onboarding_complete: Boolean(hydratedProfile.onboarding_complete),
-        }));
-
-        setIntentions(normalizeStringArray(data.preferences?.intentions));
-        setMatchTypes(normalizeStringArray(data.preferences?.match_types));
-      }
+      const { data } = await api.get<MeResponse>('/api/users/me');
+      applyHydratedUser(data);
     } catch (error) {
       console.warn('Failed to hydrate user data', error);
     } finally {
       setIsHydratingUser(false);
     }
-  }, [api]);
+  }, [api, applyHydratedUser]);
 
   const refreshMatches = useCallback(async () => {
     if (!getSessionToken() || isRefreshingMatchesRef.current) {
@@ -223,6 +238,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setProfile((prev) => ({ ...prev, email: normalizedEmail }));
         return { ok: true };
       } catch (error) {
+        if (isAxiosError(error) && error.response?.status === 409) {
+          const message = 'Account already exists. Redirecting to login.';
+          setAuthError(message);
+          return { ok: false, error: message, redirectTo: 'login' };
+        }
+
         const message = getErrorMessage(error, 'Could not create your account.');
         setAuthError(message);
         return { ok: false, error: message };
@@ -263,10 +284,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
         }
 
         setToken(data.token);
-        await hydrateUser();
+        const { data: meData } = await api.get<MeResponse>('/api/users/me');
+        const onboardingComplete = applyHydratedUser(meData);
         await refreshMatches();
-        return { ok: true };
+        return { ok: true, onboardingComplete };
       } catch (error) {
+        if (isAxiosError(error) && error.response?.status === 404) {
+          const message = 'No account found. Redirecting to signup.';
+          setAuthError(message);
+          return { ok: false, error: message, redirectTo: 'signup' };
+        }
+
         const message = getErrorMessage(error, 'Could not log in.');
         setAuthError(message);
         return { ok: false, error: message };
@@ -274,7 +302,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setIsAuthLoading(false);
       }
     },
-    [api, hydrateUser, refreshMatches, setToken]
+    [api, applyHydratedUser, refreshMatches, setToken]
   );
 
   const signOut = useCallback(() => {
@@ -363,17 +391,43 @@ export function UserProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    let isMounted = true;
+
+    const bootstrapSession = async () => {
+      const storedToken = await loadSessionToken();
+
+      if (!isMounted) {
+        return;
+      }
+
+      setSessionTokenState(storedToken);
+      setIsAuthReady(true);
+    };
+
+    void bootstrapSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthReady) {
+      return;
+    }
+
     if (!sessionTokenState) {
       setIsHydratingUser(false);
       return;
     }
 
     void hydrateUser();
-  }, [hydrateUser, sessionTokenState]);
+  }, [hydrateUser, isAuthReady, sessionTokenState]);
 
   const value = useMemo<UserContextValue>(
     () => ({
       sessionToken: sessionTokenState,
+      isAuthReady,
       isAuthenticated: Boolean(sessionTokenState),
       isAuthLoading,
       authError,
@@ -400,6 +454,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }),
     [
       sessionTokenState,
+      isAuthReady,
       isAuthLoading,
       authError,
       profile,

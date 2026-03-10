@@ -19,11 +19,13 @@ import {
   PlayfairDisplay_900Black,
 } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
+import { useUser } from '@/context/UserContext';
 
 const BG_IMAGE = require('../assets/images/background.png');
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { isAuthenticated, isAuthReady } = useUser();
   const { width } = useWindowDimensions();
   const [fontsLoaded] = useFonts({
     Playfair_Display_Black: PlayfairDisplay_900Black,
@@ -129,6 +131,18 @@ export default function SplashScreen() {
     buttonsY,
   ]);
 
+  useEffect(() => {
+    if (!isAuthReady || !isAuthenticated) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      router.replace('/home');
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [isAuthReady, isAuthenticated, router]);
+
   const pressIn = (scaleValue: Animated.Value, toValue: number) => {
     Animated.spring(scaleValue, {
       toValue,
@@ -147,8 +161,12 @@ export default function SplashScreen() {
     }).start();
   };
 
-  const handleAuthCtaPress = () => {
+  const handleSignUpPress = () => {
     router.push('/onboarding/intentions');
+  };
+
+  const handleLoginPress = () => {
+    router.push('/auth/login');
   };
 
   if (!fontsLoaded) {
@@ -210,32 +228,34 @@ export default function SplashScreen() {
               soft queers, shy bois, femmes who flirt with their eyes, etc.
             </Animated.Text>
 
-            <Animated.View
-              style={[
-                styles.buttons,
-                {
-                  opacity: buttonsOpacity,
-                  transform: [{ translateY: buttonsY }],
-                },
-              ]}>
-              <TouchableWithoutFeedback
-                onPress={handleAuthCtaPress}
-                onPressIn={() => pressIn(signUpScale, 0.97)}
-                onPressOut={() => pressOut(signUpScale)}>
-                <Animated.View style={[styles.signUpButton, { transform: [{ scale: signUpScale }] }]}>
-                  <Text style={styles.signUpText}>Sign up</Text>
-                </Animated.View>
-              </TouchableWithoutFeedback>
+            {isAuthReady && !isAuthenticated ? (
+              <Animated.View
+                style={[
+                  styles.buttons,
+                  {
+                    opacity: buttonsOpacity,
+                    transform: [{ translateY: buttonsY }],
+                  },
+                ]}>
+                <TouchableWithoutFeedback
+                  onPress={handleSignUpPress}
+                  onPressIn={() => pressIn(signUpScale, 0.97)}
+                  onPressOut={() => pressOut(signUpScale)}>
+                  <Animated.View style={[styles.signUpButton, { transform: [{ scale: signUpScale }] }]}>
+                    <Text style={styles.signUpText}>Sign up</Text>
+                  </Animated.View>
+                </TouchableWithoutFeedback>
 
-              <TouchableWithoutFeedback
-                onPress={handleAuthCtaPress}
-                onPressIn={() => pressIn(loginScale, 0.98)}
-                onPressOut={() => pressOut(loginScale)}>
-                <Animated.View style={[styles.loginButton, { transform: [{ scale: loginScale }] }]}>
-                  <Text style={styles.loginText}>Coming back to see us? Login</Text>
-                </Animated.View>
-              </TouchableWithoutFeedback>
-            </Animated.View>
+                <TouchableWithoutFeedback
+                  onPress={handleLoginPress}
+                  onPressIn={() => pressIn(loginScale, 0.98)}
+                  onPressOut={() => pressOut(loginScale)}>
+                  <Animated.View style={[styles.loginButton, { transform: [{ scale: loginScale }] }]}>
+                    <Text style={styles.loginText}>Coming back to see us? Login</Text>
+                  </Animated.View>
+                </TouchableWithoutFeedback>
+              </Animated.View>
+            ) : null}
           </View>
         </View>
       </SafeAreaView>

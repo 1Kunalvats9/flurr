@@ -1,12 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,18 +10,15 @@ import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans'
 import TactilePressable from '@/components/tactile-pressable';
 import { useUser } from '@/context/UserContext';
 
-type EmailParams = {
-  intent?: string | string[];
+type LoginParams = {
   email?: string | string[];
 };
 
-export default function EmailScreen() {
+export default function LoginScreen() {
   const router = useRouter();
-  const { intent, email: emailParam } = useLocalSearchParams<EmailParams>();
-  const { profile, setEmail: setUserEmail, setIntentions, signUp, isAuthLoading, authError } = useUser();
-  const [email, setEmail] = useState(
-    typeof emailParam === 'string' && emailParam.trim().length > 0 ? emailParam : profile.email
-  );
+  const { email: emailParam } = useLocalSearchParams<LoginParams>();
+  const { signIn, isAuthLoading, authError } = useUser();
+  const [email, setEmail] = useState(typeof emailParam === 'string' ? emailParam : '');
   const [password, setPassword] = useState('');
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
@@ -36,32 +26,43 @@ export default function EmailScreen() {
     DM_Sans_500Medium: DMSans_500Medium,
   });
 
-  const normalizedIntent = typeof intent === 'string' && intent.length > 0 ? intent : 'matchmaking';
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedPassword = password.trim();
   const isValidEmail = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail), [normalizedEmail]);
   const canContinue = isValidEmail && normalizedPassword.length >= 8 && !isAuthLoading;
 
-  const handleContinue = async () => {
+  const handleLogin = async () => {
     if (!canContinue) {
       return;
     }
 
-    setIntentions([normalizedIntent]);
-    setUserEmail(normalizedEmail);
-    const result = await signUp(normalizedEmail, normalizedPassword);
+    const result = await signIn(normalizedEmail, normalizedPassword);
 
     if (!result.ok) {
-      if (result.redirectTo === 'login') {
+      if (result.redirectTo === 'signup') {
         router.replace({
-          pathname: '/auth/login',
-          params: { email: normalizedEmail },
+          pathname: '/onboarding/email',
+          params: {
+            email: normalizedEmail,
+            intent: 'matchmaking',
+          },
         });
       }
       return;
     }
 
-    router.push('/onboarding/profile-details');
+    if (result.onboardingComplete) {
+      router.replace('/home');
+      return;
+    }
+
+    router.replace({
+      pathname: '/onboarding/email',
+      params: {
+        email: normalizedEmail,
+        intent: 'matchmaking',
+      },
+    });
   };
 
   if (!fontsLoaded) {
@@ -79,7 +80,7 @@ export default function EmailScreen() {
           keyboardVerticalOffset={Platform.select({ ios: 10, android: 0 })}>
           <View style={styles.content}>
             <View>
-              <Text style={styles.heading}>create account</Text>
+              <Text style={styles.heading}>welcome back</Text>
               <Text style={styles.label}>Email</Text>
               <TextInput
                 value={email}
@@ -98,7 +99,7 @@ export default function EmailScreen() {
               <TextInput
                 value={password}
                 onChangeText={setPassword}
-                placeholder="at least 8 characters"
+                placeholder="your password"
                 placeholderTextColor="#9A8F85"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -118,9 +119,9 @@ export default function EmailScreen() {
               </TactilePressable>
 
               <TactilePressable
-                onPress={handleContinue}
+                onPress={handleLogin}
                 style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}>
-                <Text style={styles.continueLabel}>{isAuthLoading ? 'creating...' : 'continue'}</Text>
+                <Text style={styles.continueLabel}>{isAuthLoading ? 'logging in...' : 'login'}</Text>
               </TactilePressable>
             </View>
           </View>
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   label: {
-    marginTop: 44,
+    marginTop: 24,
     marginBottom: 10,
     color: '#1C1612',
     fontFamily: 'DM_Sans_400Regular',

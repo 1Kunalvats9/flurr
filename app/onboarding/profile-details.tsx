@@ -33,6 +33,7 @@ export default function ProfileDetailsScreen() {
           .filter(Boolean)
       : ['them', 'they']
   );
+  const [customPronoun, setCustomPronoun] = useState('');
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
     DM_Sans_400Regular: DMSans_400Regular,
@@ -51,6 +52,17 @@ export default function ProfileDetailsScreen() {
 
   const removePronoun = (target: string) => {
     setPronouns((prev) => prev.filter((item) => item !== target));
+  };
+
+  const addCustomPronoun = () => {
+    const normalized = customPronoun.trim().toLowerCase();
+
+    if (normalized.length < 2 || pronouns.includes(normalized)) {
+      return;
+    }
+
+    setPronouns((prev) => [...prev, normalized]);
+    setCustomPronoun('');
   };
 
   const handleContinue = () => {
@@ -114,6 +126,25 @@ export default function ProfileDetailsScreen() {
                     disabled={!nextPronoun}
                     pressScale={0.98}>
                     <Text style={styles.tagAddText}>+ add</Text>
+                  </TactilePressable>
+                </View>
+
+                <View style={styles.customPronounRow}>
+                  <TextInput
+                    value={customPronoun}
+                    onChangeText={setCustomPronoun}
+                    placeholder="type custom pronoun"
+                    placeholderTextColor="#9F998F"
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                    style={styles.customPronounInput}
+                  />
+                  <TactilePressable
+                    onPress={addCustomPronoun}
+                    style={[styles.customPronounButton, customPronoun.trim().length < 2 && styles.tagAddDisabled]}
+                    disabled={customPronoun.trim().length < 2}
+                    pressScale={0.98}>
+                    <Text style={styles.customPronounButtonText}>add</Text>
                   </TactilePressable>
                 </View>
               </View>
@@ -226,6 +257,35 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   tagAddText: {
+    color: '#8A8378',
+    fontFamily: 'DM_Sans_500Medium',
+    fontSize: 12,
+  },
+  customPronounRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  customPronounInput: {
+    flex: 1,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: '#ECE9E1',
+    paddingHorizontal: 10,
+    color: '#1C1612',
+    fontFamily: 'DM_Sans_400Regular',
+    fontSize: 12,
+  },
+  customPronounButton: {
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: '#E9E6DF',
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customPronounButtonText: {
     color: '#8A8378',
     fontFamily: 'DM_Sans_500Medium',
     fontSize: 12,

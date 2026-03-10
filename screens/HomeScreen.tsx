@@ -16,6 +16,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import {
@@ -244,12 +245,14 @@ function SwipeableProfileCard({
 }
 
 export default function HomeScreen() {
-  const { profile, matches, refreshMatches, isRefreshingMatches } = useUser();
+  const { profile, matches, refreshMatches, isRefreshingMatches, signOut } = useUser();
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [barWidth, setBarWidth] = useState(width - 64);
   const [isInitialFeedLoading, setIsInitialFeedLoading] = useState(true);
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
     Playfair_Display_Black: PlayfairDisplay_900Black,
@@ -361,6 +364,12 @@ export default function HomeScreen() {
     setExpandedCardId((prev) => (prev === id ? null : id));
   };
 
+  const handleSignOut = () => {
+    setIsSettingsMenuOpen(false);
+    signOut();
+    router.replace('/');
+  };
+
   if (!fontsLoaded) {
     return null;
   }
@@ -387,9 +396,16 @@ export default function HomeScreen() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
               <View style={styles.headerRow}>
                 <Image source={{ uri: headerAvatar }} style={styles.avatar} />
-                <Pressable style={styles.settingsButton}>
+                <Pressable style={styles.settingsButton} onPress={() => setIsSettingsMenuOpen((prev) => !prev)}>
                   <Ionicons name="settings-outline" size={22} color="#1C1612" />
                 </Pressable>
+                {isSettingsMenuOpen ? (
+                  <View style={styles.settingsDropdown}>
+                    <Pressable onPress={handleSignOut} style={styles.settingsDropdownItem}>
+                      <Text style={styles.settingsDropdownText}>Sign out</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </View>
 
               <Text style={styles.heroText}>hey {heroName}, looking to{`\n`}meet ur twin flame?</Text>
@@ -494,6 +510,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    position: 'relative',
+    zIndex: 10,
   },
   avatar: {
     width: 48,
@@ -505,6 +523,30 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  settingsDropdown: {
+    position: 'absolute',
+    right: 0,
+    top: 38,
+    borderRadius: 12,
+    backgroundColor: '#F2EFE8',
+    borderWidth: 1,
+    borderColor: '#DDD8CF',
+    minWidth: 120,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  settingsDropdownItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  settingsDropdownText: {
+    color: '#1C1612',
+    fontFamily: 'DM_Sans_500Medium',
+    fontSize: 14,
   },
   heroText: {
     marginTop: 18,

@@ -112,13 +112,13 @@ authRouter.post('/login', async (req, res) => {
   }
 
   if (!existingUser) {
-    return res.status(401).json({ error: 'Invalid email or password.' });
+    return res.status(404).json({ error: 'No account found for this email.' });
   }
 
   const isPasswordValid = await bcrypt.compare(password, existingUser.password_hash);
 
   if (!isPasswordValid) {
-    return res.status(401).json({ error: 'Invalid email or password.' });
+    return res.status(401).json({ error: 'Invalid password.' });
   }
 
   const token = signToken({ userId: existingUser.id, email: existingUser.email });

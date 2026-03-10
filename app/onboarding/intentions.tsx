@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -11,9 +11,13 @@ import TactilePressable from '@/components/tactile-pressable';
 import { useUser } from '@/context/UserContext';
 
 type IntentType = 'matchmaking' | 'organizer';
+type IntentionsParams = {
+  email?: string | string[];
+};
 
 export default function IntentionsScreen() {
   const router = useRouter();
+  const { email } = useLocalSearchParams<IntentionsParams>();
   const { intentions, setIntentions } = useUser();
   const [intent, setIntent] = useState<IntentType>(
     intentions[0] === 'organizer' ? 'organizer' : 'matchmaking'
@@ -32,7 +36,10 @@ export default function IntentionsScreen() {
     setIntentions([intent]);
     router.push({
       pathname: '/onboarding/email',
-      params: { intent },
+      params: {
+        intent,
+        email: typeof email === 'string' ? email : undefined,
+      },
     });
   };
 
