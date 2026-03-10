@@ -9,6 +9,7 @@ import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-d
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
 import OnboardingProgressHeader from '@/components/onboarding-progress-header';
 import TactilePressable from '@/components/tactile-pressable';
+import { useUser } from '@/context/UserContext';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 type MaterialIconName = keyof typeof MaterialCommunityIcons.glyphMap;
@@ -70,7 +71,8 @@ function OptionIcon({ iconLib, icon }: { iconLib: IconLib; icon: IoniconName | M
 
 export default function MatchGoalsScreen() {
   const router = useRouter();
-  const [selected, setSelected] = useState<string[]>([]);
+  const { matchTypes, setMatchTypes } = useUser();
+  const [selected, setSelected] = useState<string[]>(matchTypes);
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
     DM_Sans_400Regular: DMSans_400Regular,
@@ -87,6 +89,7 @@ export default function MatchGoalsScreen() {
     if (!canContinue) {
       return;
     }
+    setMatchTypes(selected);
     router.push('/onboarding/era');
   };
 

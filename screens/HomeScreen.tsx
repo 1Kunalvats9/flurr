@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Image,
   LayoutAnimation,
@@ -22,6 +23,8 @@ import {
   PlayfairDisplay_900Black,
 } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
+import { useUser } from '@/context/UserContext';
+import { supabase } from '@/utils/supabase';
 
 type TabKey = 'home' | 'chats' | 'events';
 
@@ -32,6 +35,7 @@ type UserProfile = {
   tags: string[];
   about: string;
   image: string;
+  compatibilityScore: number;
 };
 
 type TabItem = {
@@ -40,61 +44,13 @@ type TabItem = {
   icon?: keyof typeof Ionicons.glyphMap;
 };
 
-const USERS: UserProfile[] = [
-  {
-    id: 'tracey',
-    name: 'TRACEY',
-    pronouns: 'she/her',
-    tags: ['prefers 1:1', 'long walks', 'birding', 'slow replies ok', 'friends first'],
-    about: 'soft spoken, loyal, and into intentional connection.',
-    image:
-      'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    id: 'seyi',
-    name: 'SEYI',
-    pronouns: 'she/they',
-    tags: ['deep convos pls', 'calling > texting', 'beach life', 'loves to host'],
-    about: 'wants tenderness, banter, and someone emotionally present.',
-    image:
-      'https://images.unsplash.com/photo-1542206395-9feb3edaa68d?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    id: 'dani',
-    name: 'DANI',
-    pronouns: 'any pronouns',
-    tags: ['goofy', 'new friendships', 'enm', 'here for a good time', 'gathers the crew'],
-    about: 'brings light energy and plans fun things for everyone.',
-    image:
-      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    id: 'hayden',
-    name: 'HAYDEN',
-    pronouns: 'they/them',
-    tags: ['foodie', 'open', 'friends first', 'slow mornings'],
-    about: 'looking for care, curiosity, and quality time.',
-    image:
-      'https://images.unsplash.com/photo-1546961329-78bef0414d7c?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    id: 'riya',
-    name: 'RIYA',
-    pronouns: 'she/they',
-    tags: ['bookshops', 'queer cinema', 'mutual care', 'night walks'],
-    about: 'romantic, observant, and high on emotional honesty.',
-    image:
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    id: 'mika',
-    name: 'MIKA',
-    pronouns: 'he/they',
-    tags: ['kitchen dates', 'plants', 'soft masc', 'good listener'],
-    about: 'loves slow intimacy and playful daily rituals.',
-    image:
-      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=900&q=80',
-  },
+const FALLBACK_IMAGES = [
+  'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1542206395-9feb3edaa68d?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1546961329-78bef0414d7c?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=900&q=80',
 ];
 
 const TABS: TabItem[] = [
@@ -288,10 +244,12 @@ function SwipeableProfileCard({
 }
 
 export default function HomeScreen() {
+  const { profile, matches, refreshMatches, isRefreshingMatches } = useUser();
   const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [barWidth, setBarWidth] = useState(width - 64);
+  const [isInitialFeedLoading, setIsInitialFeedLoading] = useState(true);
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
     Playfair_Display_Black: PlayfairDisplay_900Black,
@@ -305,6 +263,31 @@ export default function HomeScreen() {
   const singleTabWidth = useMemo(() => Math.max(96, (barWidth - 12) / TABS.length), [barWidth]);
   const cardImageWidth = Math.max(126, Math.min(154, Math.floor(width * 0.34)));
   const cardRowHeight = Math.round(cardImageWidth * 1.38);
+  const cards = useMemo<UserProfile[]>(
+    () =>
+      [...matches]
+        .sort((a, b) => b.compatibility_score - a.compatibility_score)
+        .map((candidate, index) => {
+          const tags = [...new Set([...(candidate.intentions || []), ...(candidate.match_types || [])])].slice(0, 6);
+
+          return {
+            id: candidate.clerk_id || candidate.id || `match-${index}`,
+            name: (candidate.name || 'FLURR USER').toUpperCase(),
+            pronouns: candidate.pronouns || 'pronouns undisclosed',
+            tags: tags.length > 0 ? tags : ['open to connect'],
+            about: `${candidate.compatibility_score}% compatibility`,
+            image: candidate.avatar_url || FALLBACK_IMAGES[index % FALLBACK_IMAGES.length],
+            compatibilityScore: candidate.compatibility_score,
+          };
+        }),
+    [matches]
+  );
+  const heroName = profile.name.trim().length > 0 ? profile.name : 'there';
+  const headerAvatar = profile.avatar_url || cards[0]?.image || FALLBACK_IMAGES[0];
+
+  const refreshMatchesInPlace = useCallback(async () => {
+    await refreshMatches();
+  }, [refreshMatches]);
 
   useEffect(() => {
     Animated.spring(indicatorX, {
@@ -314,6 +297,46 @@ export default function HomeScreen() {
       useNativeDriver: true,
     }).start();
   }, [activeIndex, indicatorX, singleTabWidth]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadInitialMatches = async () => {
+      setIsInitialFeedLoading(true);
+      await refreshMatchesInPlace();
+      if (isMounted) {
+        setIsInitialFeedLoading(false);
+      }
+    };
+
+    void loadInitialMatches();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshMatchesInPlace]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('feed-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        void refreshMatchesInPlace();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'preferences' }, () => {
+        void refreshMatchesInPlace();
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [refreshMatchesInPlace]);
+
+  useEffect(() => {
+    if (expandedCardId && !cards.some((card) => card.id === expandedCardId)) {
+      setExpandedCardId(null);
+    }
+  }, [cards, expandedCardId]);
 
   const switchTab = (nextTab: TabKey) => {
     if (nextTab === activeTab) {
@@ -363,16 +386,23 @@ export default function HomeScreen() {
           {activeTab === 'home' ? (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
               <View style={styles.headerRow}>
-                <Image source={{ uri: USERS[3].image }} style={styles.avatar} />
+                <Image source={{ uri: headerAvatar }} style={styles.avatar} />
                 <Pressable style={styles.settingsButton}>
                   <Ionicons name="settings-outline" size={22} color="#1C1612" />
                 </Pressable>
               </View>
 
-              <Text style={styles.heroText}>hey June, looking to{`\n`}meet ur twin flame?</Text>
+              <Text style={styles.heroText}>hey {heroName}, looking to{`\n`}meet ur twin flame?</Text>
+
+              {(isInitialFeedLoading || isRefreshingMatches) && (
+                <View style={styles.refreshRow}>
+                  <ActivityIndicator size="small" color="#8E887F" />
+                  <Text style={styles.refreshLabel}>refreshing feed</Text>
+                </View>
+              )}
 
               <View style={styles.cardStack}>
-                {USERS.map((user, index) => (
+                {cards.map((user, index) => (
                   <SwipeableProfileCard
                     key={user.id}
                     user={user}
@@ -383,6 +413,11 @@ export default function HomeScreen() {
                     cardRowHeight={cardRowHeight}
                   />
                 ))}
+                {cards.length === 0 && !isInitialFeedLoading ? (
+                  <View style={styles.emptyStateWrap}>
+                    <Text style={styles.emptyStateText}>No matches yet — check back soon</Text>
+                  </View>
+                ) : null}
               </View>
             </ScrollView>
           ) : (
@@ -479,9 +514,40 @@ const styles = StyleSheet.create({
     lineHeight: 50,
     letterSpacing: -0.2,
   },
+  refreshRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    borderRadius: 12,
+    backgroundColor: '#EEEBE4',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  refreshLabel: {
+    color: '#8E887F',
+    fontFamily: 'DM_Sans_400Regular',
+    fontSize: 12,
+  },
   cardStack: {
     marginTop: 26,
     gap: 12,
+  },
+  emptyStateWrap: {
+    minHeight: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    backgroundColor: '#EFECE5',
+    paddingHorizontal: 18,
+  },
+  emptyStateText: {
+    textAlign: 'center',
+    color: '#A8A29A',
+    fontFamily: 'Playfair_Display_Italic',
+    fontSize: 26,
+    lineHeight: 36,
   },
   cardAnimationWrap: {
     position: 'relative',

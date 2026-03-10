@@ -8,12 +8,16 @@ import { useFonts } from 'expo-font';
 import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
 import TactilePressable from '@/components/tactile-pressable';
+import { useUser } from '@/context/UserContext';
 
 type IntentType = 'matchmaking' | 'organizer';
 
 export default function IntentionsScreen() {
   const router = useRouter();
-  const [intent, setIntent] = useState<IntentType>('matchmaking');
+  const { intentions, setIntentions } = useUser();
+  const [intent, setIntent] = useState<IntentType>(
+    intentions[0] === 'organizer' ? 'organizer' : 'matchmaking'
+  );
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
     DM_Sans_400Regular: DMSans_400Regular,
@@ -23,6 +27,14 @@ export default function IntentionsScreen() {
   if (!fontsLoaded) {
     return null;
   }
+
+  const handleContinue = () => {
+    setIntentions([intent]);
+    router.push({
+      pathname: '/onboarding/email',
+      params: { intent },
+    });
+  };
 
   return (
     <View style={styles.root}>
@@ -66,12 +78,7 @@ export default function IntentionsScreen() {
             </TactilePressable>
 
             <TactilePressable
-              onPress={() =>
-                router.push({
-                  pathname: '/onboarding/email',
-                  params: { intent },
-                })
-              }
+              onPress={handleContinue}
               style={styles.continueButton}>
               <Text style={styles.continueLabel}>continue</Text>
             </TactilePressable>

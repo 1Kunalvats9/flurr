@@ -99,6 +99,11 @@ export default function CodeScreen() {
   };
 
   const handleVerify = () => {
+    const hasAllDigits = digits.every((digit) => digit.length === 1);
+    if (!hasAllDigits) {
+      return;
+    }
+
     router.push('/onboarding/profile-details');
   };
 
@@ -167,7 +172,9 @@ export default function CodeScreen() {
                 <Ionicons name="arrow-back" size={22} color="#1C1612" />
               </TactilePressable>
 
-              <TactilePressable onPress={handleVerify} style={styles.verifyButton}>
+              <TactilePressable
+                onPress={handleVerify}
+                style={[styles.verifyButton, !digits.every((digit) => digit.length === 1) && styles.verifyButtonDisabled]}>
                 <Text style={styles.verifyLabel}>Verify code</Text>
               </TactilePressable>
             </View>
@@ -264,6 +271,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  verifyButtonDisabled: {
+    opacity: 0.45,
   },
   verifyLabel: {
     color: '#F5F0E8',

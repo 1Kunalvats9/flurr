@@ -17,20 +17,29 @@ import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-d
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
 import OnboardingProgressHeader from '@/components/onboarding-progress-header';
 import TactilePressable from '@/components/tactile-pressable';
+import { useUser } from '@/context/UserContext';
 
 const PRONOUN_POOL = ['they', 'them', 'she/her', 'he/him', 'any'] as const;
 
 export default function ProfileDetailsScreen() {
   const router = useRouter();
-  const [firstName, setFirstName] = useState('June');
-  const [pronouns, setPronouns] = useState<string[]>(['them', 'they']);
+  const { profile, setName, setPronouns: setProfilePronouns } = useUser();
+  const [firstName, setFirstName] = useState(profile.name || '');
+  const [pronouns, setPronouns] = useState<string[]>(
+    profile.pronouns
+      ? profile.pronouns
+          .split('/')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : ['them', 'they']
+  );
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
     DM_Sans_400Regular: DMSans_400Regular,
     DM_Sans_500Medium: DMSans_500Medium,
   });
 
-  const canContinue = firstName.trim().length > 0 && pronouns.length > 0;
+  const canContinue = firstName.trim().length >= 2 && pronouns.length > 0;
   const nextPronoun = useMemo(() => PRONOUN_POOL.find((item) => !pronouns.includes(item)), [pronouns]);
 
   const addPronoun = () => {
@@ -48,6 +57,8 @@ export default function ProfileDetailsScreen() {
     if (!canContinue) {
       return;
     }
+    setName(firstName.trim());
+    setProfilePronouns(pronouns);
     router.push('/onboarding/match-goals');
   };
 
@@ -80,6 +91,9 @@ export default function ProfileDetailsScreen() {
                   autoCorrect={false}
                   style={styles.input}
                 />
+                {firstName.trim().length > 0 && firstName.trim().length < 2 ? (
+                  <Text style={styles.validationText}>name must be at least 2 characters</Text>
+                ) : null}
               </View>
 
               <View style={styles.inputCard}>
@@ -172,6 +186,12 @@ const styles = StyleSheet.create({
   input: {
     paddingVertical: 0,
     color: '#1C1612',
+    fontFamily: 'DM_Sans_400Regular',
+    fontSize: 12,
+  },
+  validationText: {
+    marginTop: 8,
+    color: '#D24764',
     fontFamily: 'DM_Sans_400Regular',
     fontSize: 12,
   },

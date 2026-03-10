@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +15,7 @@ import { useFonts } from 'expo-font';
 import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
 import TactilePressable from '@/components/tactile-pressable';
+import { useUser } from '@/context/UserContext';
 
 type EmailParams = {
   intent?: string | string[];
@@ -23,27 +24,35 @@ type EmailParams = {
 export default function EmailScreen() {
   const router = useRouter();
   const { intent } = useLocalSearchParams<EmailParams>();
-  const [email, setEmail] = useState('');
+  const { profile, setEmail: setUserEmail, setIntentions, signUp, isAuthLoading, authError } = useUser();
+  const [email, setEmail] = useState(profile.email);
+  const [password, setPassword] = useState('');
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
     DM_Sans_400Regular: DMSans_400Regular,
     DM_Sans_500Medium: DMSans_500Medium,
   });
 
-  const canContinue = email.trim().length > 0;
+  const normalizedIntent = typeof intent === 'string' && intent.length > 0 ? intent : 'matchmaking';
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedPassword = password.trim();
+  const isValidEmail = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail), [normalizedEmail]);
+  const canContinue = isValidEmail && normalizedPassword.length >= 8 && !isAuthLoading;
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!canContinue) {
       return;
     }
 
-    router.push({
-      pathname: '/onboarding/code',
-      params: {
-        email: email.trim(),
-        intent: typeof intent === 'string' ? intent : 'matchmaking',
-      },
-    });
+    setIntentions([normalizedIntent]);
+    setUserEmail(normalizedEmail);
+    const result = await signUp(normalizedEmail, normalizedPassword);
+
+    if (!result.ok) {
+      return;
+    }
+
+    router.push('/onboarding/profile-details');
   };
 
   if (!fontsLoaded) {
@@ -61,7 +70,7 @@ export default function EmailScreen() {
           keyboardVerticalOffset={Platform.select({ ios: 10, android: 0 })}>
           <View style={styles.content}>
             <View>
-              <Text style={styles.heading}>enter your email</Text>
+              <Text style={styles.heading}>create account</Text>
               <Text style={styles.label}>Email</Text>
               <TextInput
                 value={email}
@@ -74,6 +83,24 @@ export default function EmailScreen() {
                 returnKeyType="done"
                 style={styles.input}
               />
+              {email.length > 0 && !isValidEmail ? <Text style={styles.validationText}>enter a valid email</Text> : null}
+
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="at least 8 characters"
+                placeholderTextColor="#9A8F85"
+                autoCapitalize="none"
+                autoCorrect={false}
+                secureTextEntry
+                returnKeyType="done"
+                style={styles.input}
+              />
+              {password.length > 0 && normalizedPassword.length < 8 ? (
+                <Text style={styles.validationText}>password must be at least 8 characters</Text>
+              ) : null}
+              {authError ? <Text style={styles.validationText}>{authError.toLowerCase()}</Text> : null}
             </View>
 
             <View style={styles.footer}>
@@ -84,7 +111,7 @@ export default function EmailScreen() {
               <TactilePressable
                 onPress={handleContinue}
                 style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}>
-                <Text style={styles.continueLabel}>continue</Text>
+                <Text style={styles.continueLabel}>{isAuthLoading ? 'creating...' : 'continue'}</Text>
               </TactilePressable>
             </View>
           </View>
@@ -136,6 +163,12 @@ const styles = StyleSheet.create({
     color: '#1C1612',
     fontFamily: 'DM_Sans_400Regular',
     fontSize: 20,
+  },
+  validationText: {
+    marginTop: 8,
+    color: '#D24764',
+    fontFamily: 'DM_Sans_400Regular',
+    fontSize: 13,
   },
   footer: {
     width: '100%',

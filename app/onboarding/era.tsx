@@ -18,6 +18,7 @@ import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-d
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
 import OnboardingProgressHeader from '@/components/onboarding-progress-header';
 import TactilePressable from '@/components/tactile-pressable';
+import { useUser } from '@/context/UserContext';
 
 type EraOption = {
   key: string;
@@ -31,6 +32,7 @@ const ERA_OPTIONS: EraOption[] = [
 ];
 
 const THUMB_WIDTH = 38;
+const ERA_VALUES = [25, 50, 75];
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -38,7 +40,22 @@ function clamp(value: number, min: number, max: number) {
 
 export default function EraScreen() {
   const router = useRouter();
-  const [eraIndex, setEraIndex] = useState(0);
+  const { profile, completeOnboarding, isCompletingOnboarding, onboardingError } = useUser();
+  const [eraIndex, setEraIndex] = useState(() => {
+    const target = Number(profile.era || 50);
+    let nearestIndex = 0;
+    let nearestDiff = Number.POSITIVE_INFINITY;
+
+    ERA_VALUES.forEach((value, index) => {
+      const diff = Math.abs(value - target);
+      if (diff < nearestDiff) {
+        nearestDiff = diff;
+        nearestIndex = index;
+      }
+    });
+
+    return nearestIndex;
+  });
   const [trackWidth, setTrackWidth] = useState(0);
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
@@ -116,6 +133,15 @@ export default function EraScreen() {
     return null;
   }
 
+  const handleContinue = async () => {
+    if (isCompletingOnboarding) {
+      return;
+    }
+
+    const selectedEra = ERA_VALUES[eraIndex] ?? 50;
+    await completeOnboarding(selectedEra);
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar style="dark" translucent={false} />
@@ -163,10 +189,13 @@ export default function EraScreen() {
               <Ionicons name="arrow-back" size={22} color="#1C1612" />
             </TactilePressable>
 
-            <TactilePressable onPress={() => router.push('/home')} style={styles.continueButton}>
-              <Text style={styles.continueLabel}>continue</Text>
+            <TactilePressable
+              onPress={handleContinue}
+              style={[styles.continueButton, isCompletingOnboarding && styles.continueButtonDisabled]}>
+              <Text style={styles.continueLabel}>{isCompletingOnboarding ? 'saving...' : 'continue'}</Text>
             </TactilePressable>
           </View>
+          {onboardingError ? <Text style={styles.errorText}>{onboardingError}</Text> : null}
         </View>
       </SafeAreaView>
     </View>
@@ -260,10 +289,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  continueButtonDisabled: {
+    opacity: 0.7,
+  },
   continueLabel: {
     color: '#F5F0E8',
     fontFamily: 'DM_Sans_500Medium',
     fontSize: 17,
     letterSpacing: 0.1,
+  },
+  errorText: {
+    marginTop: 12,
+    color: '#D24764',
+    fontFamily: 'DM_Sans_400Regular',
+    fontSize: 13,
+    textAlign: 'center',
   },
 });
