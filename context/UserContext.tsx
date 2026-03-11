@@ -36,6 +36,7 @@ type ActionResult = {
 type UserContextValue = {
   sessionToken: string | null;
   isAuthReady: boolean;
+  hasHydratedUser: boolean;
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   authError: string | null;
@@ -120,6 +121,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const api = useApi();
   const [sessionTokenState, setSessionTokenState] = useState<string | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [hasHydratedUser, setHasHydratedUser] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileState>(DEFAULT_PROFILE);
@@ -134,6 +136,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const setToken = useCallback((token: string | null) => {
     setSessionTokenState(token);
+    setHasHydratedUser(!token);
     setSessionToken(token);
   }, []);
 
@@ -168,6 +171,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const hydrateUser = useCallback(async () => {
     if (!getSessionToken()) {
       setIsHydratingUser(false);
+      setHasHydratedUser(true);
       return;
     }
 
@@ -180,6 +184,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       console.warn('Failed to hydrate user data', error);
     } finally {
       setIsHydratingUser(false);
+      setHasHydratedUser(true);
     }
   }, [api, applyHydratedUser]);
 
@@ -236,6 +241,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
         setToken(data.token);
         setProfile((prev) => ({ ...prev, email: normalizedEmail }));
+        setHasHydratedUser(true);
         return { ok: true };
       } catch (error) {
         if (isAxiosError(error) && error.response?.status === 409) {
@@ -287,6 +293,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const { data: meData } = await api.get<MeResponse>('/api/users/me');
         const onboardingComplete = applyHydratedUser(meData);
         await refreshMatches();
+        setHasHydratedUser(true);
         return { ok: true, onboardingComplete };
       } catch (error) {
         if (isAxiosError(error) && error.response?.status === 404) {
@@ -307,6 +314,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     setToken(null);
+    setHasHydratedUser(true);
     setAuthError(null);
     setOnboardingError(null);
     setProfile(DEFAULT_PROFILE);
@@ -401,6 +409,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
 
       setSessionTokenState(storedToken);
+      setHasHydratedUser(!storedToken);
       setIsAuthReady(true);
     };
 
@@ -428,6 +437,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     () => ({
       sessionToken: sessionTokenState,
       isAuthReady,
+      hasHydratedUser,
       isAuthenticated: Boolean(sessionTokenState),
       isAuthLoading,
       authError,
@@ -455,6 +465,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     [
       sessionTokenState,
       isAuthReady,
+      hasHydratedUser,
       isAuthLoading,
       authError,
       profile,

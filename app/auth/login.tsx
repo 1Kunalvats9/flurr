@@ -57,10 +57,9 @@ export default function LoginScreen() {
     }
 
     router.replace({
-      pathname: '/onboarding/email',
+      pathname: '/onboarding/intentions',
       params: {
         email: normalizedEmail,
-        intent: 'matchmaking',
       },
     });
   };

@@ -18,7 +18,7 @@ type IntentionsParams = {
 export default function IntentionsScreen() {
   const router = useRouter();
   const { email } = useLocalSearchParams<IntentionsParams>();
-  const { intentions, setIntentions } = useUser();
+  const { intentions, profile, isAuthenticated, setEmail: setUserEmail, setIntentions } = useUser();
   const [intent, setIntent] = useState<IntentType>(
     intentions[0] === 'organizer' ? 'organizer' : 'matchmaking'
   );
@@ -34,6 +34,20 @@ export default function IntentionsScreen() {
 
   const handleContinue = () => {
     setIntentions([intent]);
+
+    if (isAuthenticated) {
+      const emailFromParams = typeof email === 'string' ? email.trim().toLowerCase() : '';
+      const profileEmail = profile.email.trim().toLowerCase();
+      const resolvedEmail = profileEmail.length > 0 ? profileEmail : emailFromParams;
+
+      if (resolvedEmail.length > 0) {
+        setUserEmail(resolvedEmail);
+      }
+
+      router.push('/onboarding/profile-details');
+      return;
+    }
+
     router.push({
       pathname: '/onboarding/email',
       params: {

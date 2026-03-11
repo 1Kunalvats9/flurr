@@ -13,6 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   PlayfairDisplay_400Regular_Italic,
@@ -25,7 +26,8 @@ const BG_IMAGE = require('../assets/images/background.png');
 
 export default function SplashScreen() {
   const router = useRouter();
-  const { isAuthenticated, isAuthReady } = useUser();
+  const isFocused = useIsFocused();
+  const { isAuthenticated, isAuthReady, hasHydratedUser, profile } = useUser();
   const { width } = useWindowDimensions();
   const [fontsLoaded] = useFonts({
     Playfair_Display_Black: PlayfairDisplay_900Black,
@@ -132,16 +134,21 @@ export default function SplashScreen() {
   ]);
 
   useEffect(() => {
-    if (!isAuthReady || !isAuthenticated) {
+    if (!isFocused || !isAuthReady || !isAuthenticated || !hasHydratedUser) {
       return;
     }
 
     const timer = setTimeout(() => {
-      router.replace('/home');
+      if (profile.onboarding_complete) {
+        router.replace('/home');
+        return;
+      }
+
+      router.replace('/onboarding/intentions');
     }, 450);
 
     return () => clearTimeout(timer);
-  }, [isAuthReady, isAuthenticated, router]);
+  }, [hasHydratedUser, isAuthReady, isAuthenticated, isFocused, profile.onboarding_complete, router]);
 
   const pressIn = (scaleValue: Animated.Value, toValue: number) => {
     Animated.spring(scaleValue, {
