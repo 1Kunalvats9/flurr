@@ -115,7 +115,8 @@ export default function MatchGoalsScreen() {
                     key={item.key}
                     onPress={() => toggleSelection(item.key)}
                     style={[styles.optionCard, isSelected && styles.optionCardSelected]}
-                    pressScale={0.985}>
+                    hapticFeedback="selection"
+                    pressScale={0.97}>
                     <View style={styles.optionIcon}>
                       <OptionIcon iconLib={item.iconLib} icon={item.icon} />
                     </View>

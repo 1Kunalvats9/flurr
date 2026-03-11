@@ -69,6 +69,8 @@ export default function IntentionsScreen() {
             <View style={styles.optionRow}>
               <TactilePressable
                 onPress={() => setIntent('matchmaking')}
+                hapticFeedback="selection"
+                pressScale={0.96}
                 style={[styles.optionButton, intent === 'matchmaking' && styles.optionButtonSelected]}>
                 <Text
                   style={[
@@ -81,6 +83,8 @@ export default function IntentionsScreen() {
 
               <TactilePressable
                 onPress={() => setIntent('organizer')}
+                hapticFeedback="selection"
+                pressScale={0.96}
                 style={[styles.optionButton, intent === 'organizer' && styles.optionButtonSelected]}>
                 <Text
                   style={[

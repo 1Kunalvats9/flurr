@@ -24,6 +24,8 @@ import {
   PlayfairDisplay_900Black,
 } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
+import * as Haptics from 'expo-haptics';
+import TactilePressable from '@/components/tactile-pressable';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/utils/supabase';
 
@@ -98,6 +100,7 @@ function SwipeableProfileCard({
 }: SwipeableProfileCardProps) {
   const swipeX = useRef(new Animated.Value(0)).current;
   const entrance = useRef(new Animated.Value(0)).current;
+  const hasFiredHaptic = useRef(false);
 
   useEffect(() => {
     Animated.timing(entrance, {
@@ -116,8 +119,15 @@ function SwipeableProfileCard({
           Math.abs(gesture.dx) > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
         onPanResponderMove: (_, gesture: PanResponderGestureState) => {
           swipeX.setValue(clamp(gesture.dx, -120, 120));
+          if (Math.abs(gesture.dx) > 72 && !hasFiredHaptic.current) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            hasFiredHaptic.current = true;
+          } else if (Math.abs(gesture.dx) <= 72 && hasFiredHaptic.current) {
+            hasFiredHaptic.current = false;
+          }
         },
         onPanResponderRelease: (_, gesture: PanResponderGestureState) => {
+          hasFiredHaptic.current = false;
           const releaseTo = Math.abs(gesture.dx) > 72 ? (gesture.dx > 0 ? 90 : -90) : 0;
           Animated.sequence([
             Animated.timing(swipeX, {
@@ -134,6 +144,7 @@ function SwipeableProfileCard({
           ]).start();
         },
         onPanResponderTerminate: () => {
+          hasFiredHaptic.current = false;
           Animated.spring(swipeX, {
             toValue: 0,
             speed: 18,
@@ -197,7 +208,7 @@ function SwipeableProfileCard({
         style={{
           transform: [{ translateX: swipeX }, { rotate: cardRotate }, { scale: cardScale }],
         }}>
-        <Pressable onPress={() => onToggle(user.id)} style={styles.card}>
+        <TactilePressable onPress={() => onToggle(user.id)} style={styles.card} pressScale={0.96} hapticFeedback="light">
           <View style={[styles.cardTop, { height: cardRowHeight }]}> 
             <View style={styles.cardLeft}>
               <Text numberOfLines={1} style={styles.cardName}>
@@ -238,7 +249,7 @@ function SwipeableProfileCard({
               ) : null}
             </View>
           ) : null}
-        </Pressable>
+        </TactilePressable>
       </Animated.View>
     </Animated.View>
   );

@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
+import * as Haptics from 'expo-haptics';
 import OnboardingProgressHeader from '@/components/onboarding-progress-header';
 import TactilePressable from '@/components/tactile-pressable';
 import { useUser } from '@/context/UserContext';
@@ -91,10 +92,20 @@ export default function EraScreen() {
     (releasedX: number) => {
       const ratio = maxThumbX === 0 ? 0 : releasedX / maxThumbX;
       const nextIndex = Math.round(ratio * (ERA_OPTIONS.length - 1));
-      setEraIndex(nextIndex);
+      if (nextIndex !== eraIndex) {
+        Haptics.selectionAsync();
+        setEraIndex(nextIndex);
+      }
     },
-    [maxThumbX]
+    [maxThumbX, eraIndex]
   );
+
+  const handleSetEraIndex = (index: number) => {
+    if (index !== eraIndex) {
+      Haptics.selectionAsync();
+      setEraIndex(index);
+    }
+  };
 
   const panResponder = useMemo(
     () =>
@@ -161,10 +172,11 @@ export default function EraScreen() {
               {ERA_OPTIONS.map((option, index) => {
                 const dotX = maxThumbX <= 0 ? 0 : (index / (ERA_OPTIONS.length - 1)) * maxThumbX;
                 return (
-                  <Pressable
+                  <TactilePressable
                     key={option.key}
                     style={[styles.dot, { left: dotX + THUMB_WIDTH / 2 - 3 }]}
-                    onPress={() => setEraIndex(index)}
+                    onPress={() => handleSetEraIndex(index)}
+                    hapticFeedback="selection"
                   />
                 );
               })}
@@ -177,9 +189,9 @@ export default function EraScreen() {
 
             <View style={styles.labelRow}>
               {ERA_OPTIONS.map((option, index) => (
-                <Pressable key={option.key} onPress={() => setEraIndex(index)} style={styles.labelBlock}>
+                <TactilePressable key={option.key} onPress={() => handleSetEraIndex(index)} style={styles.labelBlock} pressScale={0.96} hapticFeedback="selection">
                   <Text style={styles.labelText}>{option.label}</Text>
-                </Pressable>
+                </TactilePressable>
               ))}
             </View>
           </View>
