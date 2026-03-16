@@ -42,6 +42,15 @@ export default function ArchetypePreferenceScreen() {
     router.push('/onboarding/match-goals');
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/onboarding/archetype' as never);
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar style="dark" translucent={false} />
@@ -81,7 +90,7 @@ export default function ArchetypePreferenceScreen() {
 
             <View style={styles.footerWrap}>
               <View style={styles.footer}>
-                <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
+                <TactilePressable onPress={handleBack} style={styles.backButton} pressScale={0.96}>
                   <Ionicons name="arrow-back" size={22} color="#1C1612" />
                 </TactilePressable>
                 <TactilePressable
@@ -133,10 +142,11 @@ const styles = StyleSheet.create({
     marginTop: 18,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    justifyContent: 'space-between',
+    rowGap: 12,
   },
   card: {
-    width: '48.3%',
+    width: '48%',
     minHeight: 190,
     borderRadius: 16,
     backgroundColor: '#E8E8E8',

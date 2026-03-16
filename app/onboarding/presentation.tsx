@@ -38,6 +38,15 @@ export default function PresentationScreen() {
     router.push('/onboarding/presentation-preference' as never);
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/onboarding/intentions' as never);
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar style="dark" translucent={false} />
@@ -67,7 +76,7 @@ export default function PresentationScreen() {
             </ScrollView>
 
             <View style={styles.footer}>
-              <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
+              <TactilePressable onPress={handleBack} style={styles.backButton} pressScale={0.96}>
                 <Ionicons name="arrow-back" size={22} color="#1C1612" />
               </TactilePressable>
               <TactilePressable

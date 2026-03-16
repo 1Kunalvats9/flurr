@@ -75,6 +75,15 @@ export default function ProfileDetailsScreen() {
     router.push('/onboarding/identity' as never);
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/' as never);
+  };
+
   if (!fontsLoaded) {
     return null;
   }
@@ -153,7 +162,7 @@ export default function ProfileDetailsScreen() {
               </View>
 
               <View style={styles.footer}>
-                <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
+                <TactilePressable onPress={handleBack} style={styles.backButton} pressScale={0.96}>
                   <Ionicons name="arrow-back" size={22} color="#1C1612" />
                 </TactilePressable>
 

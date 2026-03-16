@@ -94,6 +94,15 @@ export default function MatchGoalsScreen() {
     router.push('/onboarding/era');
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/onboarding/archetype-preference' as never);
+  };
+
   if (!fontsLoaded) {
     return null;
   }
@@ -130,7 +139,7 @@ export default function MatchGoalsScreen() {
             </View>
 
             <View style={styles.footer}>
-              <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
+              <TactilePressable onPress={handleBack} style={styles.backButton} pressScale={0.96}>
                 <Ionicons name="arrow-back" size={22} color="#1C1612" />
               </TactilePressable>
 
@@ -174,10 +183,11 @@ const styles = StyleSheet.create({
     marginTop: 24,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
+    rowGap: 10,
   },
   optionCard: {
-    width: '48.3%',
+    width: '48%',
     minHeight: 105,
     borderRadius: 16,
     backgroundColor: '#EDEAE4',

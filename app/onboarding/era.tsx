@@ -154,6 +154,15 @@ export default function EraScreen() {
     await completeOnboarding(selectedEra);
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/onboarding/match-goals' as never);
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar style="dark" translucent={false} />
@@ -199,7 +208,7 @@ export default function EraScreen() {
             </View>
 
             <View style={styles.footer}>
-              <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
+              <TactilePressable onPress={handleBack} style={styles.backButton} pressScale={0.96}>
                 <Ionicons name="arrow-back" size={22} color="#1C1612" />
               </TactilePressable>
 

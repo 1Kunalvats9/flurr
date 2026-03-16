@@ -58,6 +58,15 @@ export default function IntentionsScreen() {
     });
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/onboarding/identity' as never);
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar style="dark" translucent={false} />
@@ -102,7 +111,7 @@ export default function IntentionsScreen() {
             </View>
 
             <View style={styles.footer}>
-              <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
+              <TactilePressable onPress={handleBack} style={styles.backButton} pressScale={0.96}>
                 <Ionicons name="arrow-back" size={22} color="#1C1612" />
               </TactilePressable>
 

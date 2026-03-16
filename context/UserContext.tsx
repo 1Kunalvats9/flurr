@@ -190,6 +190,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setSessionToken(token);
   }, []);
 
+  const resetUserState = useCallback(() => {
+    setAuthError(null);
+    setOnboardingError(null);
+    setProfile(DEFAULT_PROFILE);
+    setOnboarding(DEFAULT_ONBOARDING_STATE);
+    setMatches([]);
+  }, []);
+
+  const clearSession = useCallback(() => {
+    setToken(null);
+    setHasHydratedUser(true);
+    resetUserState();
+  }, [resetUserState, setToken]);
+
   const applyHydratedUser = useCallback((data: MeResponse) => {
     if (!(data?.exists && data.profile)) {
       return false;
@@ -251,12 +265,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const { data } = await api.get<MeResponse>('/api/users/me');
       applyHydratedUser(data);
     } catch (error) {
+      if (isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        clearSession();
+        return;
+      }
+
       console.warn('Failed to hydrate user data', error);
     } finally {
       setIsHydratingUser(false);
       setHasHydratedUser(true);
     }
-  }, [api, applyHydratedUser]);
+  }, [api, applyHydratedUser, clearSession]);
 
   const refreshMatches = useCallback(async () => {
     if (!getSessionToken() || isRefreshingMatchesRef.current) {
@@ -272,12 +291,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const sorted = [...nextMatches].sort((a, b) => (b.compatibility_score || 0) - (a.compatibility_score || 0));
       setMatches(sorted);
     } catch (error) {
+      if (isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        clearSession();
+        return;
+      }
+
       console.warn('Failed to refresh matches', error);
     } finally {
       isRefreshingMatchesRef.current = false;
       setIsRefreshingMatches(false);
     }
-  }, [api]);
+  }, [api, clearSession]);
 
   const signUp = useCallback(
     async (email: string, password: string): Promise<ActionResult> => {
@@ -383,14 +407,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(() => {
-    setToken(null);
-    setHasHydratedUser(true);
-    setAuthError(null);
-    setOnboardingError(null);
-    setProfile(DEFAULT_PROFILE);
-    setOnboarding(DEFAULT_ONBOARDING_STATE);
-    setMatches([]);
-  }, [setToken]);
+    clearSession();
+  }, [clearSession]);
 
   const completeOnboarding = useCallback(
     async (eraOverride?: number): Promise<ActionResult> => {
