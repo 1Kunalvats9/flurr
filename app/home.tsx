@@ -14,7 +14,7 @@ export default function HomeRoute() {
   }
 
   if (!profile.onboarding_complete) {
-    return <Redirect href="/onboarding/intentions" />;
+    return <Redirect href="/onboarding/profile-details" />;
   }
 
   return <HomeScreen />;

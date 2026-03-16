@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
+import OnboardingEntrance from '@/components/onboarding-entrance';
 import OnboardingProgressHeader from '@/components/onboarding-progress-header';
 import TactilePressable from '@/components/tactile-pressable';
 import { useUser } from '@/context/UserContext';
@@ -98,47 +99,49 @@ export default function MatchGoalsScreen() {
   }
 
   return (
-    <View style={styles.root}>
+      <View style={styles.root}>
       <StatusBar style="dark" translucent={false} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <OnboardingProgressHeader stepLabel="4/8" progress={4 / 8} />
+        <OnboardingProgressHeader stepLabel="8/9" progress={8 / 9} />
 
-        <View style={styles.content}>
-          <View>
-            <Text style={styles.heading}>what&apos;s missing rn that ur hoping to get from a match?</Text>
+        <OnboardingEntrance>
+          <View style={styles.content}>
+            <View>
+              <Text style={styles.heading}>what&apos;s missing rn that ur hoping to get from a match?</Text>
 
-            <View style={styles.grid}>
-              {GOAL_OPTIONS.map((item): ReactElement => {
-                const isSelected = selected.includes(item.key);
-                return (
-                  <TactilePressable
-                    key={item.key}
-                    onPress={() => toggleSelection(item.key)}
-                    style={[styles.optionCard, isSelected && styles.optionCardSelected]}
-                    hapticFeedback="selection"
-                    pressScale={0.97}>
-                    <View style={styles.optionIcon}>
-                      <OptionIcon iconLib={item.iconLib} icon={item.icon} />
-                    </View>
-                    <Text style={styles.optionText}>{item.label}</Text>
-                  </TactilePressable>
-                );
-              })}
+              <View style={styles.grid}>
+                {GOAL_OPTIONS.map((item): ReactElement => {
+                  const isSelected = selected.includes(item.key);
+                  return (
+                    <TactilePressable
+                      key={item.key}
+                      onPress={() => toggleSelection(item.key)}
+                      style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+                      hapticFeedback="selection"
+                      pressScale={0.97}>
+                      <View style={styles.optionIcon}>
+                        <OptionIcon iconLib={item.iconLib} icon={item.icon} />
+                      </View>
+                      <Text style={styles.optionText}>{item.label}</Text>
+                    </TactilePressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.footer}>
+              <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
+                <Ionicons name="arrow-back" size={22} color="#1C1612" />
+              </TactilePressable>
+
+              <TactilePressable
+                onPress={handleContinue}
+                style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}>
+                <Text style={styles.continueLabel}>continue</Text>
+              </TactilePressable>
             </View>
           </View>
-
-          <View style={styles.footer}>
-            <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
-              <Ionicons name="arrow-back" size={22} color="#1C1612" />
-            </TactilePressable>
-
-            <TactilePressable
-              onPress={handleContinue}
-              style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}>
-              <Text style={styles.continueLabel}>continue</Text>
-            </TactilePressable>
-          </View>
-        </View>
+        </OnboardingEntrance>
       </SafeAreaView>
     </View>
   );

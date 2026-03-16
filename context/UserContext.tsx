@@ -13,6 +13,20 @@ type ProfileState = {
   onboarding_complete: boolean;
 };
 
+interface OnboardingState {
+  name: string;
+  pronouns: string;
+  email: string;
+  intentions: string[];
+  match_types: string[];
+  era: number;
+  is_bipoc: boolean | null;
+  presentation: string;
+  presentation_preferences: string[];
+  archetype: string;
+  archetype_preferences: string[];
+}
+
 export type MatchRecord = {
   id: string;
   clerk_id: string;
@@ -23,7 +37,10 @@ export type MatchRecord = {
   era: number | null;
   intentions: string[];
   match_types: string[];
+  presentation?: string | null;
+  archetype?: string | null;
   compatibility_score: number;
+  compatibility_raw?: number;
 };
 
 type ActionResult = {
@@ -41,8 +58,14 @@ type UserContextValue = {
   isAuthLoading: boolean;
   authError: string | null;
   profile: ProfileState;
+  onboarding: OnboardingState;
   intentions: string[];
   matchTypes: string[];
+  isBipoc: boolean | null;
+  presentation: string;
+  presentationPreferences: string[];
+  archetype: string;
+  archetypePreferences: string[];
   matches: MatchRecord[];
   isHydratingUser: boolean;
   isRefreshingMatches: boolean;
@@ -57,6 +80,11 @@ type UserContextValue = {
   setEra: (era: number) => void;
   setIntentions: (intentions: string[]) => void;
   setMatchTypes: (matchTypes: string[]) => void;
+  setIsBipoc: (value: boolean | null) => void;
+  setPresentation: (value: string) => void;
+  setPresentationPreferences: (value: string[]) => void;
+  setArchetype: (value: string) => void;
+  setArchetypePreferences: (value: string[]) => void;
   hydrateUser: () => Promise<void>;
   refreshMatches: () => Promise<void>;
   completeOnboarding: (eraOverride?: number) => Promise<ActionResult>;
@@ -71,6 +99,20 @@ const DEFAULT_PROFILE: ProfileState = {
   onboarding_complete: false,
 };
 
+const DEFAULT_ONBOARDING_STATE: OnboardingState = {
+  name: '',
+  pronouns: '',
+  email: '',
+  intentions: [],
+  match_types: [],
+  era: 50,
+  is_bipoc: null,
+  presentation: '',
+  presentation_preferences: [],
+  archetype: '',
+  archetype_preferences: [],
+};
+
 const UserContext = createContext<UserContextValue | undefined>(undefined);
 
 function normalizeStringArray(value: unknown): string[] {
@@ -79,6 +121,10 @@ function normalizeStringArray(value: unknown): string[] {
   }
 
   return value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean);
+}
+
+function normalizeString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 function normalizePronouns(pronouns: string | string[]) {
@@ -114,6 +160,11 @@ type MeResponse = {
   preferences?: {
     intentions?: string[];
     match_types?: string[];
+    is_bipoc?: boolean | null;
+    presentation?: string | null;
+    presentation_preferences?: string[];
+    archetype?: string | null;
+    archetype_preferences?: string[];
   } | null;
 };
 
@@ -125,8 +176,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileState>(DEFAULT_PROFILE);
-  const [intentions, setIntentions] = useState<string[]>([]);
-  const [matchTypes, setMatchTypes] = useState<string[]>([]);
+  const [onboarding, setOnboarding] = useState<OnboardingState>(DEFAULT_ONBOARDING_STATE);
   const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [isHydratingUser, setIsHydratingUser] = useState(false);
   const [isRefreshingMatches, setIsRefreshingMatches] = useState(false);
@@ -146,12 +196,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
 
     const hydratedProfile = data.profile;
+    const preferences = data.preferences;
 
     setProfile((prev) => ({
       ...prev,
-      name: (hydratedProfile.name || prev.name) as string,
-      pronouns: (hydratedProfile.pronouns || prev.pronouns) as string,
-      email: (hydratedProfile.email || prev.email) as string,
+      name: normalizeString(hydratedProfile.name) || prev.name,
+      pronouns: normalizeString(hydratedProfile.pronouns) || prev.pronouns,
+      email: normalizeString(hydratedProfile.email) || prev.email,
       avatar_url:
         typeof hydratedProfile.avatar_url === 'string' || hydratedProfile.avatar_url === null
           ? hydratedProfile.avatar_url
@@ -160,10 +211,29 @@ export function UserProvider({ children }: { children: ReactNode }) {
       onboarding_complete: Boolean(hydratedProfile.onboarding_complete),
     }));
 
-    if (data.preferences) {
-      setIntentions(normalizeStringArray(data.preferences.intentions));
-      setMatchTypes(normalizeStringArray(data.preferences.match_types));
-    }
+    setOnboarding((prev) => ({
+      ...prev,
+      name: normalizeString(hydratedProfile.name) || prev.name,
+      pronouns: normalizeString(hydratedProfile.pronouns) || prev.pronouns,
+      email: normalizeString(hydratedProfile.email) || prev.email,
+      era: Number(hydratedProfile.era ?? prev.era),
+      intentions: preferences ? normalizeStringArray(preferences.intentions) : prev.intentions,
+      match_types: preferences ? normalizeStringArray(preferences.match_types) : prev.match_types,
+      is_bipoc:
+        preferences && ('is_bipoc' in preferences)
+          ? typeof preferences.is_bipoc === 'boolean'
+            ? preferences.is_bipoc
+            : null
+          : prev.is_bipoc,
+      presentation: preferences ? normalizeString(preferences.presentation) : prev.presentation,
+      presentation_preferences: preferences
+        ? normalizeStringArray(preferences.presentation_preferences)
+        : prev.presentation_preferences,
+      archetype: preferences ? normalizeString(preferences.archetype) : prev.archetype,
+      archetype_preferences: preferences
+        ? normalizeStringArray(preferences.archetype_preferences)
+        : prev.archetype_preferences,
+    }));
 
     return Boolean(hydratedProfile.onboarding_complete);
   }, []);
@@ -199,7 +269,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await api.get<{ matches?: MatchRecord[] }>('/api/matches');
       const nextMatches = Array.isArray(data?.matches) ? data.matches : [];
-
       const sorted = [...nextMatches].sort((a, b) => (b.compatibility_score || 0) - (a.compatibility_score || 0));
       setMatches(sorted);
     } catch (error) {
@@ -241,6 +310,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
         setToken(data.token);
         setProfile((prev) => ({ ...prev, email: normalizedEmail }));
+        setOnboarding((prev) => ({ ...prev, email: normalizedEmail }));
         setHasHydratedUser(true);
         return { ok: true };
       } catch (error) {
@@ -318,8 +388,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setAuthError(null);
     setOnboardingError(null);
     setProfile(DEFAULT_PROFILE);
-    setIntentions([]);
-    setMatchTypes([]);
+    setOnboarding(DEFAULT_ONBOARDING_STATE);
     setMatches([]);
   }, [setToken]);
 
@@ -331,10 +400,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
         return { ok: false, error };
       }
 
-      const name = profile.name.trim();
-      const pronouns = profile.pronouns.trim();
-      const email = profile.email.trim().toLowerCase();
-      const resolvedEra = Number.isFinite(eraOverride) ? Number(eraOverride) : profile.era;
+      const name = onboarding.name.trim();
+      const pronouns = onboarding.pronouns.trim();
+      const email = onboarding.email.trim().toLowerCase();
+      const resolvedEra = Number.isFinite(eraOverride) ? Number(eraOverride) : onboarding.era;
 
       if (name.length < 2) {
         const error = 'Name must be at least 2 characters.';
@@ -354,14 +423,44 @@ export function UserProvider({ children }: { children: ReactNode }) {
         return { ok: false, error };
       }
 
-      if (intentions.length === 0) {
+      if (onboarding.intentions.length === 0) {
         const error = 'Choose at least one intention.';
         setOnboardingError(error);
         return { ok: false, error };
       }
 
-      if (matchTypes.length === 0) {
+      if (onboarding.match_types.length === 0) {
         const error = 'Choose at least one match goal.';
+        setOnboardingError(error);
+        return { ok: false, error };
+      }
+
+      if (onboarding.is_bipoc === null) {
+        const error = 'Choose how you identify.';
+        setOnboardingError(error);
+        return { ok: false, error };
+      }
+
+      if (onboarding.presentation.length === 0) {
+        const error = 'Choose a presentation.';
+        setOnboardingError(error);
+        return { ok: false, error };
+      }
+
+      if (onboarding.presentation_preferences.length === 0) {
+        const error = 'Choose at least one presentation preference.';
+        setOnboardingError(error);
+        return { ok: false, error };
+      }
+
+      if (onboarding.archetype.length === 0) {
+        const error = 'Choose an archetype.';
+        setOnboardingError(error);
+        return { ok: false, error };
+      }
+
+      if (onboarding.archetype_preferences.length === 0) {
+        const error = 'Choose at least one archetype preference.';
         setOnboardingError(error);
         return { ok: false, error };
       }
@@ -377,12 +476,25 @@ export function UserProvider({ children }: { children: ReactNode }) {
         });
 
         await api.post('/api/users/preferences', {
-          intentions,
-          match_types: matchTypes,
+          intentions: onboarding.intentions,
+          match_types: onboarding.match_types,
           era: resolvedEra,
+          is_bipoc: onboarding.is_bipoc,
+          presentation: onboarding.presentation,
+          presentation_preferences: onboarding.presentation_preferences,
+          archetype: onboarding.archetype,
+          archetype_preferences: onboarding.archetype_preferences,
         });
 
-        setProfile((prev) => ({ ...prev, era: resolvedEra, onboarding_complete: true }));
+        setProfile((prev) => ({
+          ...prev,
+          name,
+          pronouns,
+          email,
+          era: resolvedEra,
+          onboarding_complete: true,
+        }));
+        setOnboarding((prev) => ({ ...prev, era: resolvedEra }));
         await refreshMatches();
         router.replace('/home');
 
@@ -395,7 +507,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setIsCompletingOnboarding(false);
       }
     },
-    [api, intentions, matchTypes, profile.email, profile.era, profile.name, profile.pronouns, refreshMatches]
+    [api, onboarding, refreshMatches]
   );
 
   useEffect(() => {
@@ -442,8 +554,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
       isAuthLoading,
       authError,
       profile,
-      intentions,
-      matchTypes,
+      onboarding,
+      intentions: onboarding.intentions,
+      matchTypes: onboarding.match_types,
+      isBipoc: onboarding.is_bipoc,
+      presentation: onboarding.presentation,
+      presentationPreferences: onboarding.presentation_preferences,
+      archetype: onboarding.archetype,
+      archetypePreferences: onboarding.archetype_preferences,
       matches,
       isHydratingUser,
       isRefreshingMatches,
@@ -452,12 +570,31 @@ export function UserProvider({ children }: { children: ReactNode }) {
       signUp,
       signIn,
       signOut,
-      setName: (name) => setProfile((prev) => ({ ...prev, name })),
-      setPronouns: (pronouns) => setProfile((prev) => ({ ...prev, pronouns: normalizePronouns(pronouns) })),
-      setEmail: (email) => setProfile((prev) => ({ ...prev, email })),
-      setEra: (era) => setProfile((prev) => ({ ...prev, era })),
-      setIntentions,
-      setMatchTypes,
+      setName: (name) => {
+        setProfile((prev) => ({ ...prev, name }));
+        setOnboarding((prev) => ({ ...prev, name }));
+      },
+      setPronouns: (pronouns) => {
+        const normalized = normalizePronouns(pronouns);
+        setProfile((prev) => ({ ...prev, pronouns: normalized }));
+        setOnboarding((prev) => ({ ...prev, pronouns: normalized }));
+      },
+      setEmail: (email) => {
+        setProfile((prev) => ({ ...prev, email }));
+        setOnboarding((prev) => ({ ...prev, email }));
+      },
+      setEra: (era) => {
+        setProfile((prev) => ({ ...prev, era }));
+        setOnboarding((prev) => ({ ...prev, era }));
+      },
+      setIntentions: (intentions) => setOnboarding((prev) => ({ ...prev, intentions })),
+      setMatchTypes: (matchTypes) => setOnboarding((prev) => ({ ...prev, match_types: matchTypes })),
+      setIsBipoc: (value) => setOnboarding((prev) => ({ ...prev, is_bipoc: value })),
+      setPresentation: (value) => setOnboarding((prev) => ({ ...prev, presentation: value })),
+      setPresentationPreferences: (value) =>
+        setOnboarding((prev) => ({ ...prev, presentation_preferences: value })),
+      setArchetype: (value) => setOnboarding((prev) => ({ ...prev, archetype: value })),
+      setArchetypePreferences: (value) => setOnboarding((prev) => ({ ...prev, archetype_preferences: value })),
       hydrateUser,
       refreshMatches,
       completeOnboarding,
@@ -469,8 +606,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       isAuthLoading,
       authError,
       profile,
-      intentions,
-      matchTypes,
+      onboarding,
       matches,
       isHydratingUser,
       isRefreshingMatches,

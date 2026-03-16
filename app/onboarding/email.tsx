@@ -18,14 +18,13 @@ import TactilePressable from '@/components/tactile-pressable';
 import { useUser } from '@/context/UserContext';
 
 type EmailParams = {
-  intent?: string | string[];
   email?: string | string[];
 };
 
 export default function EmailScreen() {
   const router = useRouter();
-  const { intent, email: emailParam } = useLocalSearchParams<EmailParams>();
-  const { profile, setEmail: setUserEmail, setIntentions, signUp, isAuthLoading, authError } = useUser();
+  const { email: emailParam } = useLocalSearchParams<EmailParams>();
+  const { profile, setEmail: setUserEmail, signUp, isAuthLoading, authError } = useUser();
   const [email, setEmail] = useState(
     typeof emailParam === 'string' && emailParam.trim().length > 0 ? emailParam : profile.email
   );
@@ -36,7 +35,6 @@ export default function EmailScreen() {
     DM_Sans_500Medium: DMSans_500Medium,
   });
 
-  const normalizedIntent = typeof intent === 'string' && intent.length > 0 ? intent : 'matchmaking';
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedPassword = password.trim();
   const isValidEmail = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail), [normalizedEmail]);
@@ -47,7 +45,6 @@ export default function EmailScreen() {
       return;
     }
 
-    setIntentions([normalizedIntent]);
     setUserEmail(normalizedEmail);
     const result = await signUp(normalizedEmail, normalizedPassword);
 

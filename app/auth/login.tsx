@@ -42,10 +42,7 @@ export default function LoginScreen() {
       if (result.redirectTo === 'signup') {
         router.replace({
           pathname: '/onboarding/email',
-          params: {
-            email: normalizedEmail,
-            intent: 'matchmaking',
-          },
+          params: { email: normalizedEmail },
         });
       }
       return;
@@ -57,7 +54,7 @@ export default function LoginScreen() {
     }
 
     router.replace({
-      pathname: '/onboarding/intentions',
+      pathname: '/onboarding/profile-details',
       params: {
         email: normalizedEmail,
       },

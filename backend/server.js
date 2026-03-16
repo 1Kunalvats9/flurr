@@ -10,6 +10,7 @@ const { authMiddleware } = require('./middleware/auth');
 const { authRouter } = require('./routes/auth');
 const { usersRouter } = require('./routes/users');
 const { matchesRouter } = require('./routes/matches');
+const { interactionsRouter } = require('./routes/interactions');
 
 const app = express();
 const port = Number(process.env.PORT) || 3001;
@@ -24,6 +25,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/users', authMiddleware, usersRouter);
 app.use('/api/matches', authMiddleware, matchesRouter);
+app.use('/api/interactions', authMiddleware, interactionsRouter);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

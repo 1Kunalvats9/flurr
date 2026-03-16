@@ -17,6 +17,7 @@ import { useFonts } from 'expo-font';
 import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
 import * as Haptics from 'expo-haptics';
+import OnboardingEntrance from '@/components/onboarding-entrance';
 import OnboardingProgressHeader from '@/components/onboarding-progress-header';
 import TactilePressable from '@/components/tactile-pressable';
 import { useUser } from '@/context/UserContext';
@@ -157,58 +158,60 @@ export default function EraScreen() {
     <View style={styles.root}>
       <StatusBar style="dark" translucent={false} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <OnboardingProgressHeader stepLabel="5/8" progress={5 / 8} />
+        <OnboardingProgressHeader stepLabel="9/9" progress={9 / 9} />
 
-        <View style={styles.content}>
-          <View>
-            <Text style={styles.heading}>whats ur era?</Text>
+        <OnboardingEntrance>
+          <View style={styles.content}>
+            <View>
+              <Text style={styles.heading}>whats ur era?</Text>
 
-            <Pressable
-              onPress={(event) => handleTrackPress(event.nativeEvent.locationX)}
-              style={styles.sliderArea}
-              onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}>
-              <View style={styles.sliderTrack} />
+              <Pressable
+                onPress={(event) => handleTrackPress(event.nativeEvent.locationX)}
+                style={styles.sliderArea}
+                onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}>
+                <View style={styles.sliderTrack} />
 
-              {ERA_OPTIONS.map((option, index) => {
-                const dotX = maxThumbX <= 0 ? 0 : (index / (ERA_OPTIONS.length - 1)) * maxThumbX;
-                return (
-                  <TactilePressable
-                    key={option.key}
-                    style={[styles.dot, { left: dotX + THUMB_WIDTH / 2 - 3 }]}
-                    onPress={() => handleSetEraIndex(index)}
-                    hapticFeedback="selection"
-                  />
-                );
-              })}
+                {ERA_OPTIONS.map((option, index) => {
+                  const dotX = maxThumbX <= 0 ? 0 : (index / (ERA_OPTIONS.length - 1)) * maxThumbX;
+                  return (
+                    <TactilePressable
+                      key={option.key}
+                      style={[styles.dot, { left: dotX + THUMB_WIDTH / 2 - 3 }]}
+                      onPress={() => handleSetEraIndex(index)}
+                      hapticFeedback="selection"
+                    />
+                  );
+                })}
 
-              <Animated.View
-                {...panResponder.panHandlers}
-                style={[styles.sliderThumb, { transform: [{ translateX: thumbX }] }]}
-              />
-            </Pressable>
+                <Animated.View
+                  {...panResponder.panHandlers}
+                  style={[styles.sliderThumb, { transform: [{ translateX: thumbX }] }]}
+                />
+              </Pressable>
 
-            <View style={styles.labelRow}>
-              {ERA_OPTIONS.map((option, index) => (
-                <TactilePressable key={option.key} onPress={() => handleSetEraIndex(index)} style={styles.labelBlock} pressScale={0.96} hapticFeedback="selection">
-                  <Text style={styles.labelText}>{option.label}</Text>
-                </TactilePressable>
-              ))}
+              <View style={styles.labelRow}>
+                {ERA_OPTIONS.map((option, index) => (
+                  <TactilePressable key={option.key} onPress={() => handleSetEraIndex(index)} style={styles.labelBlock} pressScale={0.96} hapticFeedback="selection">
+                    <Text style={styles.labelText}>{option.label}</Text>
+                  </TactilePressable>
+                ))}
+              </View>
             </View>
-          </View>
 
-          <View style={styles.footer}>
-            <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
-              <Ionicons name="arrow-back" size={22} color="#1C1612" />
-            </TactilePressable>
+            <View style={styles.footer}>
+              <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
+                <Ionicons name="arrow-back" size={22} color="#1C1612" />
+              </TactilePressable>
 
-            <TactilePressable
-              onPress={handleContinue}
-              style={[styles.continueButton, isCompletingOnboarding && styles.continueButtonDisabled]}>
-              <Text style={styles.continueLabel}>{isCompletingOnboarding ? 'saving...' : 'continue'}</Text>
-            </TactilePressable>
+              <TactilePressable
+                onPress={handleContinue}
+                style={[styles.continueButton, isCompletingOnboarding && styles.continueButtonDisabled]}>
+                <Text style={styles.continueLabel}>{isCompletingOnboarding ? 'saving...' : 'continue'}</Text>
+              </TactilePressable>
+            </View>
+            {onboardingError ? <Text style={styles.errorText}>{onboardingError}</Text> : null}
           </View>
-          {onboardingError ? <Text style={styles.errorText}>{onboardingError}</Text> : null}
-        </View>
+        </OnboardingEntrance>
       </SafeAreaView>
     </View>
   );

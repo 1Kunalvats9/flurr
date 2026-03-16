@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
+import OnboardingEntrance from '@/components/onboarding-entrance';
 import OnboardingProgressHeader from '@/components/onboarding-progress-header';
 import TactilePressable from '@/components/tactile-pressable';
 import { useUser } from '@/context/UserContext';
@@ -71,7 +72,7 @@ export default function ProfileDetailsScreen() {
     }
     setName(firstName.trim());
     setProfilePronouns(pronouns);
-    router.push('/onboarding/match-goals');
+    router.push('/onboarding/identity' as never);
   };
 
   if (!fontsLoaded) {
@@ -82,86 +83,88 @@ export default function ProfileDetailsScreen() {
     <View style={styles.root}>
       <StatusBar style="dark" translucent={false} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <OnboardingProgressHeader stepLabel="1/8" progress={1 / 8} />
+        <OnboardingProgressHeader stepLabel="1/9" progress={1 / 9} />
 
         <KeyboardAvoidingView
           style={styles.keyboard}
           behavior={Platform.select({ ios: 'padding', android: 'height' })}
           keyboardVerticalOffset={Platform.select({ ios: 10, android: 0 })}>
-          <View style={styles.content}>
-            <View>
-              <Text style={styles.heading}>what&apos;s ur name &amp; pronouns</Text>
-              <Text style={styles.subheading}>this is how we&apos;ll intro u to ur match.</Text>
+          <OnboardingEntrance>
+            <View style={styles.content}>
+              <View>
+                <Text style={styles.heading}>what&apos;s ur name &amp; pronouns</Text>
+                <Text style={styles.subheading}>this is how we&apos;ll intro u to ur match.</Text>
 
-              <View style={styles.inputCard}>
-                <Text style={styles.inputLabel}>First name</Text>
-                <TextInput
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  placeholder="June"
-                  placeholderTextColor="#9F998F"
-                  autoCorrect={false}
-                  style={styles.input}
-                />
-                {firstName.trim().length > 0 && firstName.trim().length < 2 ? (
-                  <Text style={styles.validationText}>name must be at least 2 characters</Text>
-                ) : null}
-              </View>
-
-              <View style={styles.inputCard}>
-                <Text style={styles.inputLabel}>Pronouns</Text>
-                <View style={styles.tagsRow}>
-                  {pronouns.map((tag) => (
-                    <View key={tag} style={styles.tag}>
-                      <Text style={styles.tagText}>{tag}</Text>
-                      <Pressable onPress={() => removePronoun(tag)} hitSlop={8}>
-                        <Ionicons name="close" size={14} color="#F23862" />
-                      </Pressable>
-                    </View>
-                  ))}
-
-                  <TactilePressable
-                    onPress={addPronoun}
-                    style={[styles.tagAdd, !nextPronoun && styles.tagAddDisabled]}
-                    disabled={!nextPronoun}
-                    pressScale={0.98}>
-                    <Text style={styles.tagAddText}>+ add</Text>
-                  </TactilePressable>
-                </View>
-
-                <View style={styles.customPronounRow}>
+                <View style={styles.inputCard}>
+                  <Text style={styles.inputLabel}>First name</Text>
                   <TextInput
-                    value={customPronoun}
-                    onChangeText={setCustomPronoun}
-                    placeholder="type custom pronoun"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    placeholder="June"
                     placeholderTextColor="#9F998F"
                     autoCorrect={false}
-                    autoCapitalize="none"
-                    style={styles.customPronounInput}
+                    style={styles.input}
                   />
-                  <TactilePressable
-                    onPress={addCustomPronoun}
-                    style={[styles.customPronounButton, customPronoun.trim().length < 2 && styles.tagAddDisabled]}
-                    disabled={customPronoun.trim().length < 2}
-                    pressScale={0.98}>
-                    <Text style={styles.customPronounButtonText}>add</Text>
-                  </TactilePressable>
+                  {firstName.trim().length > 0 && firstName.trim().length < 2 ? (
+                    <Text style={styles.validationText}>name must be at least 2 characters</Text>
+                  ) : null}
+                </View>
+
+                <View style={styles.inputCard}>
+                  <Text style={styles.inputLabel}>Pronouns</Text>
+                  <View style={styles.tagsRow}>
+                    {pronouns.map((tag) => (
+                      <View key={tag} style={styles.tag}>
+                        <Text style={styles.tagText}>{tag}</Text>
+                        <Pressable onPress={() => removePronoun(tag)} hitSlop={8}>
+                          <Ionicons name="close" size={14} color="#F23862" />
+                        </Pressable>
+                      </View>
+                    ))}
+
+                    <TactilePressable
+                      onPress={addPronoun}
+                      style={[styles.tagAdd, !nextPronoun && styles.tagAddDisabled]}
+                      disabled={!nextPronoun}
+                      pressScale={0.98}>
+                      <Text style={styles.tagAddText}>+ add</Text>
+                    </TactilePressable>
+                  </View>
+
+                  <View style={styles.customPronounRow}>
+                    <TextInput
+                      value={customPronoun}
+                      onChangeText={setCustomPronoun}
+                      placeholder="type custom pronoun"
+                      placeholderTextColor="#9F998F"
+                      autoCorrect={false}
+                      autoCapitalize="none"
+                      style={styles.customPronounInput}
+                    />
+                    <TactilePressable
+                      onPress={addCustomPronoun}
+                      style={[styles.customPronounButton, customPronoun.trim().length < 2 && styles.tagAddDisabled]}
+                      disabled={customPronoun.trim().length < 2}
+                      pressScale={0.98}>
+                      <Text style={styles.customPronounButtonText}>add</Text>
+                    </TactilePressable>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            <View style={styles.footer}>
-              <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
-                <Ionicons name="arrow-back" size={22} color="#1C1612" />
-              </TactilePressable>
+              <View style={styles.footer}>
+                <TactilePressable onPress={() => router.back()} style={styles.backButton} pressScale={0.96}>
+                  <Ionicons name="arrow-back" size={22} color="#1C1612" />
+                </TactilePressable>
 
-              <TactilePressable
-                onPress={handleContinue}
-                style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}>
-                <Text style={styles.continueLabel}>continue</Text>
-              </TactilePressable>
+                <TactilePressable
+                  onPress={handleContinue}
+                  style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}>
+                  <Text style={styles.continueLabel}>continue</Text>
+                </TactilePressable>
+              </View>
             </View>
-          </View>
+          </OnboardingEntrance>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>

@@ -1,20 +1,77 @@
-function calculateCompatibility(currentUser, candidate) {
+function calculateCompatibility(userA, userB) {
   let score = 0;
 
-  // Intentions overlap - 40 points max
-  const intentionOverlap = currentUser.intentions.filter((i) => candidate.intentions.includes(i)).length;
-  score += (intentionOverlap / Math.max(currentUser.intentions.length, 1)) * 40;
+  // Intent — max 9 points
+  const intentionsA = userA.intentions || [];
+  const intentionsB = userB.intentions || [];
+  const intentOverlap = intentionsA.filter((item) => intentionsB.includes(item)).length;
+  if (
+    intentOverlap > 0 &&
+    intentOverlap === intentionsA.length &&
+    intentOverlap === intentionsB.length
+  ) {
+    score += 9;
+  } else if (intentOverlap > 0) {
+    score += 5;
+  }
 
-  // Match type overlap - 35 points max
-  const matchTypeOverlap = currentUser.match_types.filter((m) => candidate.match_types.includes(m)).length;
-  score += (matchTypeOverlap / Math.max(currentUser.match_types.length, 1)) * 35;
+  // Identity — max 7 points
+  if (
+    userA.is_bipoc !== null &&
+    userA.is_bipoc !== undefined &&
+    userB.is_bipoc !== null &&
+    userB.is_bipoc !== undefined &&
+    userA.is_bipoc === userB.is_bipoc
+  ) {
+    score += 7;
+  }
 
-  // Era proximity - 25 points max
-  // 0 difference = 25 pts, 50 difference = 0 pts
-  const eraDiff = Math.abs(currentUser.era - candidate.era);
-  score += Math.max(0, 25 - eraDiff * 0.5);
+  // Presentation match — max 7 points
+  if (
+    userA.presentation &&
+    userB.presentation &&
+    userA.presentation === userB.presentation
+  ) {
+    score += 7;
+  }
 
-  return Math.round(Math.min(score, 100));
+  // Presentation preference bonus — max 1 point
+  if (
+    userA.presentation &&
+    userB.presentation &&
+    Array.isArray(userA.presentation_preferences) &&
+    Array.isArray(userB.presentation_preferences) &&
+    userA.presentation_preferences.includes(userB.presentation) &&
+    userB.presentation_preferences.includes(userA.presentation)
+  ) {
+    score += 1;
+  }
+
+  // Archetype match — max 6 points
+  if (
+    userA.archetype &&
+    userB.archetype &&
+    userA.archetype === userB.archetype
+  ) {
+    score += 6;
+  }
+
+  // Archetype preference bonus — max 1 point
+  if (
+    userA.archetype &&
+    userB.archetype &&
+    Array.isArray(userA.archetype_preferences) &&
+    Array.isArray(userB.archetype_preferences) &&
+    userA.archetype_preferences.includes(userB.archetype) &&
+    userB.archetype_preferences.includes(userA.archetype)
+  ) {
+    score += 1;
+  }
+
+  const raw = score;
+  const percent = Math.round((score / 31) * 100);
+
+  return { raw, percent };
 }
 
 module.exports = { calculateCompatibility };

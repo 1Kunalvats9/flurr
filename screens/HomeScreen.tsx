@@ -27,12 +27,15 @@ import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans'
 import * as Haptics from 'expo-haptics';
 import TactilePressable from '@/components/tactile-pressable';
 import { useUser } from '@/context/UserContext';
+import { useApi } from '@/utils/api';
 import { supabase } from '@/utils/supabase';
 
 type TabKey = 'home' | 'chats' | 'events';
+type SwipeDirection = 'like' | 'pass';
 
 type UserProfile = {
   id: string;
+  clerk_id: string;
   name: string;
   pronouns: string;
   tags: string[];
@@ -41,10 +44,26 @@ type UserProfile = {
   compatibilityScore: number;
 };
 
+type MatchOverlayPayload = {
+  currentImage: string;
+  otherImage: string;
+  otherName: string;
+};
+
 type TabItem = {
   key: TabKey;
   label: string;
   icon?: keyof typeof Ionicons.glyphMap;
+};
+
+type SwipeableProfileCardProps = {
+  user: UserProfile;
+  index: number;
+  expanded: boolean;
+  onToggle: (id: string) => void;
+  onSwipe: (direction: SwipeDirection, user: UserProfile) => void;
+  cardImageWidth: number;
+  cardRowHeight: number;
 };
 
 const FALLBACK_IMAGES = [
@@ -81,20 +100,12 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-type SwipeableProfileCardProps = {
-  user: UserProfile;
-  index: number;
-  expanded: boolean;
-  onToggle: (id: string) => void;
-  cardImageWidth: number;
-  cardRowHeight: number;
-};
-
 function SwipeableProfileCard({
   user,
   index,
   expanded,
   onToggle,
+  onSwipe,
   cardImageWidth,
   cardRowHeight,
 }: SwipeableProfileCardProps) {
@@ -128,20 +139,19 @@ function SwipeableProfileCard({
         },
         onPanResponderRelease: (_, gesture: PanResponderGestureState) => {
           hasFiredHaptic.current = false;
-          const releaseTo = Math.abs(gesture.dx) > 72 ? (gesture.dx > 0 ? 90 : -90) : 0;
-          Animated.sequence([
-            Animated.timing(swipeX, {
-              toValue: releaseTo,
-              duration: 110,
-              useNativeDriver: true,
-            }),
-            Animated.spring(swipeX, {
-              toValue: 0,
-              speed: 18,
-              bounciness: 10,
-              useNativeDriver: true,
-            }),
-          ]).start();
+
+          if (Math.abs(gesture.dx) > 72) {
+            swipeX.setValue(gesture.dx > 0 ? 120 : -120);
+            onSwipe(gesture.dx > 0 ? 'like' : 'pass', user);
+            return;
+          }
+
+          Animated.spring(swipeX, {
+            toValue: 0,
+            speed: 18,
+            bounciness: 10,
+            useNativeDriver: true,
+          }).start();
         },
         onPanResponderTerminate: () => {
           hasFiredHaptic.current = false;
@@ -153,7 +163,7 @@ function SwipeableProfileCard({
           }).start();
         },
       }),
-    [swipeX]
+    [onSwipe, swipeX, user]
   );
 
   const likeOpacity = swipeX.interpolate({
@@ -196,10 +206,10 @@ function SwipeableProfileCard({
           ],
         },
       ]}>
-      <Animated.View style={[styles.swipeHint, styles.swipeHintLike, { opacity: likeOpacity }]}> 
+      <Animated.View style={[styles.swipeHint, styles.swipeHintLike, { opacity: likeOpacity }]}>
         <Text style={styles.swipeHintText}>LIKE</Text>
       </Animated.View>
-      <Animated.View style={[styles.swipeHint, styles.swipeHintPass, { opacity: passOpacity }]}> 
+      <Animated.View style={[styles.swipeHint, styles.swipeHintPass, { opacity: passOpacity }]}>
         <Text style={styles.swipeHintText}>PASS</Text>
       </Animated.View>
 
@@ -209,7 +219,7 @@ function SwipeableProfileCard({
           transform: [{ translateX: swipeX }, { rotate: cardRotate }, { scale: cardScale }],
         }}>
         <TactilePressable onPress={() => onToggle(user.id)} style={styles.card} pressScale={0.96} hapticFeedback="light">
-          <View style={[styles.cardTop, { height: cardRowHeight }]}> 
+          <View style={[styles.cardTop, { height: cardRowHeight }]}>
             <View style={styles.cardLeft}>
               <Text numberOfLines={1} style={styles.cardName}>
                 {user.name}
@@ -230,13 +240,13 @@ function SwipeableProfileCard({
               </View>
             </View>
 
-            <View style={[styles.cardImageWrap, { width: cardImageWidth }]}> 
+            <View style={[styles.cardImageWrap, { width: cardImageWidth }]}>
               <Image source={{ uri: user.image }} style={styles.cardImage} resizeMode="cover" />
             </View>
           </View>
 
           {expanded ? (
-            <View style={styles.cardExpanded}> 
+            <View style={styles.cardExpanded}>
               <Text style={styles.cardAbout}>{user.about}</Text>
               {extraTags.length > 0 ? (
                 <View style={styles.tagsWrapExpanded}>
@@ -256,6 +266,7 @@ function SwipeableProfileCard({
 }
 
 export default function HomeScreen() {
+  const api = useApi();
   const { profile, matches, refreshMatches, isRefreshingMatches, signOut } = useUser();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -264,6 +275,10 @@ export default function HomeScreen() {
   const [barWidth, setBarWidth] = useState(width - 64);
   const [isInitialFeedLoading, setIsInitialFeedLoading] = useState(true);
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [newMatch, setNewMatch] = useState<MatchOverlayPayload | null>(null);
+  const [showMatchOverlay, setShowMatchOverlay] = useState(false);
+  const [isMatchOverlayMounted, setIsMatchOverlayMounted] = useState(false);
   const [fontsLoaded] = useFonts({
     Playfair_Display_Italic: PlayfairDisplay_400Regular_Italic,
     Playfair_Display_Black: PlayfairDisplay_900Black,
@@ -273,19 +288,31 @@ export default function HomeScreen() {
 
   const indicatorX = useRef(new Animated.Value(0)).current;
   const contentOpacity = useRef(new Animated.Value(1)).current;
+  const matchOverlayProgress = useRef(new Animated.Value(0)).current;
   const activeIndex = TABS.findIndex((tab) => tab.key === activeTab);
   const singleTabWidth = useMemo(() => Math.max(96, (barWidth - 12) / TABS.length), [barWidth]);
   const cardImageWidth = Math.max(126, Math.min(154, Math.floor(width * 0.34)));
   const cardRowHeight = Math.round(cardImageWidth * 1.38);
-  const cards = useMemo<UserProfile[]>(
+
+  const mappedProfiles = useMemo<UserProfile[]>(
     () =>
       [...matches]
         .sort((a, b) => b.compatibility_score - a.compatibility_score)
         .map((candidate, index) => {
-          const tags = [...new Set([...(candidate.intentions || []), ...(candidate.match_types || [])])].slice(0, 6);
+          const tags = [
+            ...new Set([
+              ...(candidate.intentions || []),
+              ...(candidate.match_types || []),
+              candidate.presentation || '',
+              candidate.archetype || '',
+            ]),
+          ]
+            .filter(Boolean)
+            .slice(0, 6);
 
           return {
             id: candidate.clerk_id || candidate.id || `match-${index}`,
+            clerk_id: candidate.clerk_id,
             name: (candidate.name || 'FLURR USER').toUpperCase(),
             pronouns: candidate.pronouns || 'pronouns undisclosed',
             tags: tags.length > 0 ? tags : ['open to connect'],
@@ -296,12 +323,18 @@ export default function HomeScreen() {
         }),
     [matches]
   );
+
   const heroName = profile.name.trim().length > 0 ? profile.name : 'there';
-  const headerAvatar = profile.avatar_url || cards[0]?.image || FALLBACK_IMAGES[0];
+  const currentUserPhoto = profile.avatar_url || FALLBACK_IMAGES[0];
+  const headerAvatar = profile.avatar_url || profiles[0]?.image || FALLBACK_IMAGES[0];
 
   const refreshMatchesInPlace = useCallback(async () => {
     await refreshMatches();
   }, [refreshMatches]);
+
+  useEffect(() => {
+    setProfiles(mappedProfiles);
+  }, [mappedProfiles]);
 
   useEffect(() => {
     Animated.spring(indicatorX, {
@@ -347,10 +380,47 @@ export default function HomeScreen() {
   }, [refreshMatchesInPlace]);
 
   useEffect(() => {
-    if (expandedCardId && !cards.some((card) => card.id === expandedCardId)) {
+    if (expandedCardId && !profiles.some((card) => card.id === expandedCardId)) {
       setExpandedCardId(null);
     }
-  }, [cards, expandedCardId]);
+  }, [expandedCardId, profiles]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    if (showMatchOverlay && newMatch) {
+      setIsMatchOverlayMounted(true);
+      Animated.parallel([
+        Animated.spring(matchOverlayProgress, {
+          toValue: 1,
+          speed: 18,
+          bounciness: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      timer = setTimeout(() => {
+        setShowMatchOverlay(false);
+      }, 2600);
+    } else if (isMatchOverlayMounted) {
+      Animated.timing(matchOverlayProgress, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) {
+          setIsMatchOverlayMounted(false);
+          setNewMatch(null);
+        }
+      });
+    }
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [isMatchOverlayMounted, matchOverlayProgress, newMatch, showMatchOverlay]);
 
   const switchTab = (nextTab: TabKey) => {
     if (nextTab === activeTab) {
@@ -374,6 +444,39 @@ export default function HomeScreen() {
     LayoutAnimation.configureNext(SMOOTH_EXPAND_ANIMATION);
     setExpandedCardId((prev) => (prev === id ? null : id));
   };
+
+  const dismissMatchOverlay = useCallback(() => {
+    setShowMatchOverlay(false);
+  }, []);
+
+  const handleSwipe = useCallback(
+    (direction: SwipeDirection, candidate: UserProfile) => {
+      LayoutAnimation.configureNext(SMOOTH_EXPAND_ANIMATION);
+      setProfiles((prev) => prev.filter((profileItem) => profileItem.clerk_id !== candidate.clerk_id));
+      setExpandedCardId((prev) => (prev === candidate.id ? null : prev));
+
+      void (async () => {
+        try {
+          const response = await api.post('/api/interactions', {
+            to_clerk_id: candidate.clerk_id,
+            action: direction,
+          });
+
+          if (response.data?.match) {
+            setNewMatch({
+              currentImage: currentUserPhoto,
+              otherImage: candidate.image,
+              otherName: candidate.name,
+            });
+            setShowMatchOverlay(true);
+          }
+        } catch (error) {
+          console.error('Swipe action failed', error);
+        }
+      })();
+    },
+    [api, currentUserPhoto]
+  );
 
   const handleSignOut = () => {
     setIsSettingsMenuOpen(false);
@@ -429,20 +532,21 @@ export default function HomeScreen() {
               )}
 
               <View style={styles.cardStack}>
-                {cards.map((user, index) => (
+                {profiles.map((user, index) => (
                   <SwipeableProfileCard
                     key={user.id}
                     user={user}
                     index={index}
                     expanded={expandedCardId === user.id}
                     onToggle={toggleCard}
+                    onSwipe={handleSwipe}
                     cardImageWidth={cardImageWidth}
                     cardRowHeight={cardRowHeight}
                   />
                 ))}
-                {cards.length === 0 && !isInitialFeedLoading ? (
+                {profiles.length === 0 && !isInitialFeedLoading ? (
                   <View style={styles.emptyStateWrap}>
-                    <Text style={styles.emptyStateText}>No matches yet — check back soon</Text>
+                    <Text style={styles.emptyStateText}>No matches yet - check back soon</Text>
                   </View>
                 ) : null}
               </View>
@@ -454,6 +558,52 @@ export default function HomeScreen() {
             </View>
           )}
         </Animated.View>
+
+        {isMatchOverlayMounted && newMatch ? (
+          <Animated.View
+            style={[
+              styles.matchOverlayBackdrop,
+              {
+                opacity: matchOverlayProgress,
+              },
+            ]}>
+            <Animated.View
+              style={[
+                styles.matchOverlayCard,
+                {
+                  opacity: matchOverlayProgress,
+                  transform: [
+                    {
+                      scale: matchOverlayProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.88, 1],
+                      }),
+                    },
+                    {
+                      translateY: matchOverlayProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [24, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}>
+              <View style={styles.matchPhotoRow}>
+                <View style={[styles.matchPhotoWrap, styles.matchPhotoPrimary]}>
+                  <Image source={{ uri: newMatch.currentImage }} style={styles.matchPhoto} />
+                </View>
+                <View style={[styles.matchPhotoWrap, styles.matchPhotoSecondary]}>
+                  <Image source={{ uri: newMatch.otherImage }} style={styles.matchPhoto} />
+                </View>
+              </View>
+              <Text style={styles.matchTitle}>It&apos;s a match</Text>
+              <Text style={styles.matchSubtitle}>you and {newMatch.otherName.toLowerCase()} both said yes.</Text>
+              <TactilePressable onPress={dismissMatchOverlay} style={styles.matchDismissButton} pressScale={0.97}>
+                <Text style={styles.matchDismissLabel}>dismiss</Text>
+              </TactilePressable>
+            </Animated.View>
+          </Animated.View>
+        ) : null}
 
         <View style={styles.tabBarShell}>
           <View
@@ -698,6 +848,83 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '100%',
     height: '100%',
+  },
+  matchOverlayBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 30,
+    backgroundColor: 'rgba(28, 22, 18, 0.24)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  matchOverlayCard: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 30,
+    backgroundColor: '#F7F1E9',
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.14,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
+  },
+  matchPhotoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  matchPhotoWrap: {
+    width: 94,
+    height: 94,
+    borderRadius: 47,
+    overflow: 'hidden',
+    borderWidth: 4,
+    borderColor: '#F7F1E9',
+    backgroundColor: '#D7D2C9',
+  },
+  matchPhotoPrimary: {
+    marginRight: -10,
+  },
+  matchPhotoSecondary: {
+    marginLeft: -10,
+  },
+  matchPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  matchTitle: {
+    color: '#B47C63',
+    fontFamily: 'Playfair_Display_Italic',
+    fontSize: 42,
+    lineHeight: 48,
+    textAlign: 'center',
+  },
+  matchSubtitle: {
+    marginTop: 10,
+    color: '#5A524B',
+    fontFamily: 'DM_Sans_400Regular',
+    fontSize: 15,
+    lineHeight: 21,
+    textAlign: 'center',
+  },
+  matchDismissButton: {
+    marginTop: 22,
+    minWidth: 140,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#D7C2B3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  matchDismissLabel: {
+    color: '#1C1612',
+    fontFamily: 'DM_Sans_500Medium',
+    fontSize: 15,
   },
   placeholderWrap: {
     flex: 1,

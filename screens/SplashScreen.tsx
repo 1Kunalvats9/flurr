@@ -144,7 +144,7 @@ export default function SplashScreen() {
         return;
       }
 
-      router.replace('/onboarding/intentions');
+      router.replace('/onboarding/profile-details');
     }, 450);
 
     return () => clearTimeout(timer);
@@ -169,7 +169,7 @@ export default function SplashScreen() {
   };
 
   const handleSignUpPress = () => {
-    router.push('/onboarding/intentions');
+    router.push('/onboarding/email');
   };
 
   const handleLoginPress = () => {

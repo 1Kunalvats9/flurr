@@ -3,6 +3,23 @@ const { supabaseAdmin } = require('../utils/supabase');
 
 const usersRouter = express.Router();
 
+function normalizeStringArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item) => typeof item === 'string').map((item) => item.trim()).filter(Boolean);
+}
+
+function normalizeOptionalString(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 usersRouter.get('/me', async (req, res) => {
   const { data, error } = await supabaseAdmin
     .from('profiles')
@@ -20,6 +37,11 @@ usersRouter.get('/me', async (req, res) => {
       preferences (
         intentions,
         match_types,
+        is_bipoc,
+        presentation,
+        presentation_preferences,
+        archetype,
+        archetype_preferences,
         updated_at
       )
     `
@@ -92,13 +114,22 @@ usersRouter.post('/profile', async (req, res) => {
 });
 
 usersRouter.post('/preferences', async (req, res) => {
-  const { intentions, match_types: matchTypes, era } = req.body || {};
+  const {
+    intentions,
+    match_types,
+    era,
+    is_bipoc,
+    presentation,
+    presentation_preferences,
+    archetype,
+    archetype_preferences,
+  } = req.body || {};
 
   if (!Array.isArray(intentions) || intentions.length === 0) {
     return res.status(400).json({ error: 'intentions must be a non-empty array' });
   }
 
-  if (!Array.isArray(matchTypes) || matchTypes.length === 0) {
+  if (!Array.isArray(match_types) || match_types.length === 0) {
     return res.status(400).json({ error: 'match_types must be a non-empty array' });
   }
 
@@ -107,8 +138,14 @@ usersRouter.post('/preferences', async (req, res) => {
     return res.status(400).json({ error: 'era must be a number' });
   }
 
-  const cleanedIntentions = intentions.filter((value) => typeof value === 'string').map((value) => value.trim());
-  const cleanedMatchTypes = matchTypes.filter((value) => typeof value === 'string').map((value) => value.trim());
+  if (is_bipoc !== null && is_bipoc !== undefined && typeof is_bipoc !== 'boolean') {
+    return res.status(400).json({ error: 'is_bipoc must be a boolean or null' });
+  }
+
+  const cleanedIntentions = normalizeStringArray(intentions);
+  const cleanedMatchTypes = normalizeStringArray(match_types);
+  const cleanedPresentationPreferences = normalizeStringArray(presentation_preferences);
+  const cleanedArchetypePreferences = normalizeStringArray(archetype_preferences);
 
   const { data: preferencesData, error: preferencesError } = await supabaseAdmin
     .from('preferences')
@@ -117,6 +154,12 @@ usersRouter.post('/preferences', async (req, res) => {
         clerk_id: req.userId,
         intentions: cleanedIntentions,
         match_types: cleanedMatchTypes,
+        is_bipoc: is_bipoc ?? null,
+        presentation: normalizeOptionalString(presentation),
+        presentation_preferences: cleanedPresentationPreferences,
+        archetype: normalizeOptionalString(archetype),
+        archetype_preferences: cleanedArchetypePreferences,
+        updated_at: new Date().toISOString(),
       },
       {
         onConflict: 'clerk_id',
@@ -131,16 +174,11 @@ usersRouter.post('/preferences', async (req, res) => {
 
   const { data: profileData, error: profileError } = await supabaseAdmin
     .from('profiles')
-    .upsert(
-      {
-        clerk_id: req.userId,
-        era: numericEra,
-        onboarding_complete: true,
-      },
-      {
-        onConflict: 'clerk_id',
-      }
-    )
+    .update({
+      era: numericEra || 50,
+      onboarding_complete: true,
+    })
+    .eq('clerk_id', req.userId)
     .select('*')
     .single();
 
