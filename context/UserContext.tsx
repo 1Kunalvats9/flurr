@@ -199,6 +199,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearSession = useCallback(() => {
+    isRefreshingMatchesRef.current = false;
+    setIsHydratingUser(false);
+    setIsRefreshingMatches(false);
+    setIsCompletingOnboarding(false);
     setToken(null);
     setHasHydratedUser(true);
     resetUserState();
@@ -263,14 +267,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     try {
       const { data } = await api.get<MeResponse>('/api/users/me');
-      applyHydratedUser(data);
-    } catch (error) {
-      if (isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+      if (!data?.exists) {
         clearSession();
         return;
       }
 
+      applyHydratedUser(data);
+    } catch (error) {
       console.warn('Failed to hydrate user data', error);
+      clearSession();
+      return;
     } finally {
       setIsHydratingUser(false);
       setHasHydratedUser(true);
@@ -372,6 +378,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
       setAuthError(null);
       setIsAuthLoading(true);
+      let hasStoredToken = false;
 
       try {
         const { data } = await api.post<{ token: string }>('/api/auth/login', {
@@ -384,26 +391,39 @@ export function UserProvider({ children }: { children: ReactNode }) {
         }
 
         setToken(data.token);
+        hasStoredToken = true;
         const { data: meData } = await api.get<MeResponse>('/api/users/me');
+
+        if (!meData?.exists) {
+          clearSession();
+          const message = 'This session is no longer valid. Please sign in again.';
+          setAuthError(message);
+          return { ok: false, error: message };
+        }
+
         const onboardingComplete = applyHydratedUser(meData);
         await refreshMatches();
         setHasHydratedUser(true);
         return { ok: true, onboardingComplete };
       } catch (error) {
+        if (hasStoredToken) {
+          clearSession();
+        }
+
         if (isAxiosError(error) && error.response?.status === 404) {
           const message = 'No account found. Redirecting to signup.';
           setAuthError(message);
           return { ok: false, error: message, redirectTo: 'signup' };
         }
 
-        const message = getErrorMessage(error, 'Could not log in.');
+        const message = getErrorMessage(error, 'Could not finish logging in. Please try again.');
         setAuthError(message);
         return { ok: false, error: message };
       } finally {
         setIsAuthLoading(false);
       }
     },
-    [api, applyHydratedUser, refreshMatches, setToken]
+    [api, applyHydratedUser, clearSession, refreshMatches, setToken]
   );
 
   const signOut = useCallback(() => {

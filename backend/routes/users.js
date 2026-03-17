@@ -21,6 +21,20 @@ function normalizeOptionalString(value) {
 }
 
 usersRouter.get('/me', async (req, res) => {
+  const { data: authUser, error: authUserError } = await supabaseAdmin
+    .from('auth_users')
+    .select('id, email')
+    .eq('id', req.userId)
+    .maybeSingle();
+
+  if (authUserError) {
+    return res.status(500).json({ error: authUserError.message });
+  }
+
+  if (!authUser) {
+    return res.json({ exists: false });
+  }
+
   const { data, error } = await supabaseAdmin
     .from('profiles')
     .select(
@@ -54,7 +68,19 @@ usersRouter.get('/me', async (req, res) => {
   }
 
   if (!data) {
-    return res.json({ exists: false });
+    return res.json({
+      exists: true,
+      profile: {
+        clerk_id: authUser.id,
+        name: '',
+        pronouns: '',
+        email: authUser.email,
+        avatar_url: null,
+        era: 50,
+        onboarding_complete: false,
+      },
+      preferences: null,
+    });
   }
 
   const preferences = Array.isArray(data.preferences) ? data.preferences[0] || null : data.preferences || null;
